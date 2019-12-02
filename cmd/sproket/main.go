@@ -11,7 +11,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 	"sproket"
+	"strings"
 	"sync"
 )
 
@@ -27,6 +29,7 @@ type config struct {
 	count      bool
 	noVerify   bool
 	version    bool
+	fieldKeys  bool
 	searchAPI  string
 	criteria   []sproket.Criteria
 }
@@ -183,6 +186,22 @@ func getByIDs(ids []string, args *config) {
 	getBySearch(criteria, args)
 }
 
+func outputFields(args *config) {
+	for i := 0; i < len(args.criteria); i++ {
+		keys := sproket.SearchFields(&args.criteria[i], args.searchAPI)
+		sort.Strings(keys)
+		fmt.Println("Criteria: ")
+		fmt.Println(args.criteria[i])
+		fmt.Println("Fields: ")
+		for _, key := range keys {
+			if !(strings.HasPrefix(key, "_")) {
+				fmt.Printf("  %s\n", key)
+			}
+		}
+		fmt.Println()
+	}
+}
+
 func loadStdin() []string {
 	scanner := bufio.NewScanner(os.Stdin)
 	var strs []string
@@ -207,11 +226,12 @@ func main() {
 	flag.BoolVar(&args.verbose, "verbose", false, "Flag to indicate output should be verbose")
 	flag.BoolVar(&args.confirm, "y", false, "Flag to confirm larger downloads")
 	flag.BoolVar(&args.noVerify, "no.verify", false, "Flag to skip sha256 verification")
+	flag.BoolVar(&args.fieldKeys, "field.keys", false, "Flag to output possible field keys. The outputted list may be incomplete for complicated reasons.")
 	flag.BoolVar(&args.count, "count", false, "Flag to only count number of files that would be attempted to be downloaded")
 	flag.BoolVar(&args.version, "version", false, "Flag to output the version and exit")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.0.0\n")
+		fmt.Printf("v0.0.1\n")
 		return
 	}
 	err := args.Init()
@@ -219,8 +239,9 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
-	if args.fileIds || args.datasetIds {
+	if args.fieldKeys {
+		outputFields(&args)
+	} else if args.fileIds || args.datasetIds {
 		ids := loadStdin()
 		getByIDs(ids, &args)
 	} else if len(args.criteria) > 0 {
