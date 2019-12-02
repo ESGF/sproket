@@ -1,0 +1,22 @@
+{
+    "search_api": "https://esgf-node.llnl.gov/esg-search/search/",
+    "criteria":[
+        {
+            "disabled": false,
+            "fields": {
+                "dataset_id": "CMIP6.CMIP.E3SM-Project.E3SM-1-0.historical.r2i1p1f1.Amon.rlds.gr.v20190729|aims3.llnl.gov"
+            }
+        },
+        {
+            "skip": 0,
+            "disabled": true,
+            "fields": {
+                "data_node": "esgf-data1.llnl.gov",
+                "variable_id": "/orog|mrr(.*)/",
+                "retracted": "false",
+                "replica": "false",
+                "project": "CMIP6"
+            }
+        }
+    ]
+}

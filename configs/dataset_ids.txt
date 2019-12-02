@@ -1,0 +1,2 @@
+CMIP6.CMIP.E3SM-Project.E3SM-1-0.historical.r2i1p1f1.Amon.rlds.gr.v20190729|aims3.llnl.gov
+CMIP6.CMIP.UA.MCM-UA-1-0.abrupt-4xCO2.r1i1p1f1.Lmon.mrros.gn.v20190731|esgf-data1.llnl.gov 
