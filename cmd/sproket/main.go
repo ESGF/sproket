@@ -188,6 +188,9 @@ func getByIDs(ids []string, args *config) {
 
 func outputFields(args *config) {
 	for i := 0; i < len(args.criteria); i++ {
+		if args.criteria[i].Disabled {
+			continue
+		}
 		keys := sproket.SearchFields(&args.criteria[i], args.searchAPI)
 		sort.Strings(keys)
 		fmt.Println("Criteria: ")
