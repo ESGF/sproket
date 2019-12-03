@@ -248,7 +248,7 @@ func main() {
 	var args config
 	flag.StringVar(&args.conf, "config", "", "Path to config file")
 	flag.StringVar(&args.outDir, "out.dir", "./", "Path to directory to put downloads in")
-	flag.IntVar(&args.parallel, "p", 4, "Max number of conncurrent downloads")
+	flag.IntVar(&args.parallel, "p", 4, "Max number of concurrent downloads")
 	flag.BoolVar(&args.datasetIds, "dataset.ids", false, "Flag to indicate dataset ids are being provided on standard in")
 	flag.BoolVar(&args.fileIds, "file.ids", false, "Flag to indicate file ids are being provided on standard in")
 	flag.BoolVar(&args.noDownload, "no.download", false, "Flag to indicate no downloads should be performed")
