@@ -50,6 +50,10 @@ func (args *config) Init() error {
 		if err != nil {
 			return fmt.Errorf("%s not found", args.conf)
 		}
+		if !(json.Valid(fileBytes)) {
+			return fmt.Errorf("%s does not contain valid JSON", args.conf)
+		}
+
 		var downloads sproket.Downloads
 		json.Unmarshal(fileBytes, &downloads)
 		if downloads.SAPI == "" {
