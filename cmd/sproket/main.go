@@ -135,13 +135,13 @@ func getBySearch(criteria []sproket.Criteria, args *config) {
 
 	// Count files to be downloaded
 	totalFiles := 0
-	for i := 0; i < len(criteria); i++ {
-		if criteria[i].Disabled {
+	for _, c := range criteria {
+		if c.Disabled {
 			continue
 		}
-		_, n := sproket.SearchURLs(&criteria[i], args.searchAPI, 0, 0)
+		_, n := sproket.SearchURLs(&c, args.searchAPI, 0, 0)
 		if args.verbose {
-			fmt.Println(criteria[i])
+			fmt.Println(c)
 			fmt.Printf("found %d files to download\n", n)
 		}
 		totalFiles += n
@@ -166,13 +166,13 @@ func getBySearch(criteria []sproket.Criteria, args *config) {
 	// Begin grabbing sets of files to download
 	limit := 50
 	started := 0
-	for i := 0; i < len(criteria); i++ {
-		if criteria[i].Disabled {
+	for _, c := range criteria {
+		if c.Disabled {
 			continue
 		}
 		cur := 0
 		for {
-			docs, remaining := sproket.SearchURLs(&criteria[i], args.searchAPI, cur, limit)
+			docs, remaining := sproket.SearchURLs(&c, args.searchAPI, cur, limit)
 			for _, doc := range docs {
 				docChan <- doc
 			}
