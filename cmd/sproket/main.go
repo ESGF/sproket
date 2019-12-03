@@ -193,9 +193,9 @@ func outputFields(args *config) {
 		}
 		keys := sproket.SearchFields(&args.criteria[i], args.searchAPI)
 		sort.Strings(keys)
-		fmt.Println("Criteria: ")
+		fmt.Println("criteria: ")
 		fmt.Println(args.criteria[i])
-		fmt.Println("Fields: ")
+		fmt.Println("field keys: ")
 		for _, key := range keys {
 			if !(strings.HasPrefix(key, "_")) {
 				fmt.Printf("  %s\n", key)
