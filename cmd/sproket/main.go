@@ -69,6 +69,10 @@ func (args *config) Init() error {
 }
 
 func verify(dest string, sha256sum string) error {
+
+	if sha256sum == "" {
+		return fmt.Errorf("could not retrieve checksum for %s", dest)
+	}
 	f, err := os.Open(dest)
 	if err != nil {
 		return err
@@ -116,7 +120,7 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 			sproket.Get(doc.HTTPURL, dest)
 
 			// Verify checksum, if available and desired
-			if doc.GetSum() != "" && !(args.noVerify) {
+			if !(args.noVerify) {
 				err := verify(dest, doc.GetSum())
 				if err != nil {
 					fmt.Println(err)
