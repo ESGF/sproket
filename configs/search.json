@@ -11,7 +11,7 @@
             "fields": {
                 "data_node": "esgf-data1.llnl.gov",
                 "variable_id": "/orog|mrr(.*)/",
-                "retracted": "false",
+                "-retracted": "true",
                 "replica": "false",
                 "project": "CMIP6"
             }
