@@ -9,6 +9,5 @@ type Downloads struct {
 // Criteria is a group of ANDed requirements
 type Criteria struct {
 	Fields   map[string]string `json:"fields"`
-	Start    int               `json:"skip"`
 	Disabled bool              `json:"disabled"`
 }

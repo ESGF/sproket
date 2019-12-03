@@ -8,7 +8,6 @@
             }
         },
         {
-            "skip": 0,
             "disabled": true,
             "fields": {
                 "data_node": "esgf-data1.llnl.gov",

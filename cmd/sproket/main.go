@@ -68,6 +68,22 @@ func (args *config) Init() error {
 	return nil
 }
 
+func verify(dest string, sha256sum string) error {
+	f, err := os.Open(dest)
+	if err != nil {
+		return err
+	}
+	hash := sha256.New()
+	if _, err := io.Copy(hash, f); err != nil {
+		return err
+	}
+	res := fmt.Sprintf("%x", hash.Sum(nil))
+	if res != sha256sum {
+		return errors.New("sha256 verification failure")
+	}
+	return nil
+}
+
 func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *config) {
 	defer waiter.Done()
 	for doc := range inDocs {
@@ -82,22 +98,28 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 
 			dest := fmt.Sprintf("%s/%s", args.outDir, doc.ID)
 
+			// Check if present and correct
+			if _, err := os.Stat(dest); err == nil {
+				err := verify(dest, doc.GetSum())
+				if err != nil {
+					fmt.Println(err)
+				} else {
+					if args.verbose {
+						fmt.Printf("%d: %s already present and verified, no download\n", id, dest)
+					}
+					// Go to next download if everything checks out
+					continue
+				}
+			}
+
 			// Perform download
 			sproket.Get(doc.HTTPURL, dest)
 
 			// Verify checksum, if available and desired
 			if doc.GetSum() != "" && !(args.noVerify) {
-				f, err := os.Open(dest)
+				err := verify(dest, doc.GetSum())
 				if err != nil {
-					log.Fatal(err)
-				}
-				hash := sha256.New()
-				if _, err := io.Copy(hash, f); err != nil {
-					log.Fatal(err)
-				}
-				res := fmt.Sprintf("%x", hash.Sum(nil))
-				if res != doc.GetSum() {
-					fmt.Printf("%d: checksum failure %s\n", id, dest)
+					fmt.Println(err)
 				} else if args.verbose {
 					fmt.Printf("%d: verified %s\n", id, dest)
 				}
@@ -114,7 +136,7 @@ func getBySearch(criteria []sproket.Criteria, args *config) {
 		if criteria[i].Disabled {
 			continue
 		}
-		_, n := sproket.SearchURLs(&criteria[i], args.searchAPI, criteria[i].Start, 0)
+		_, n := sproket.SearchURLs(&criteria[i], args.searchAPI, 0, 0)
 		if args.verbose {
 			fmt.Println(criteria[i])
 			fmt.Printf("found %d files to download\n", n)
@@ -145,7 +167,7 @@ func getBySearch(criteria []sproket.Criteria, args *config) {
 		if criteria[i].Disabled {
 			continue
 		}
-		cur := criteria[i].Start
+		cur := 0
 		for {
 			docs, remaining := sproket.SearchURLs(&criteria[i], args.searchAPI, cur, limit)
 			for _, doc := range docs {
