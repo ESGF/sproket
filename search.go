@@ -31,6 +31,9 @@ type Doc struct {
 
 // GetSum returns the checksum, since the checksum is stored as a multivalued field
 func (d *Doc) GetSum() string {
+	if len(d.Sum) != 1 {
+		return ""
+	}
 	return d.Sum[0]
 }
 
