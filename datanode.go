@@ -3,8 +3,6 @@ package sproket
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 )
 
 type facetRes struct {
@@ -16,8 +14,8 @@ type facetCounts struct {
 }
 
 // DataNodes returns the data nodes serving the files and the number of files that each data node has
-func DataNodes(c *Criteria, sAPI string) map[string]int {
-	q := buildQ(c)
+func DataNodes(s *Search) map[string]int {
+	q := buildQ(s)
 	params := map[string]string{
 		"query":  q,
 		"type":   "File",
@@ -26,16 +24,11 @@ func DataNodes(c *Criteria, sAPI string) map[string]int {
 		"facets": "data_node",
 	}
 
-	// Perform query
-	resp, err := http.Get(Path(sAPI, params))
+	body, err := performSearch(s.API, params)
 	if err != nil {
 		fmt.Println(err)
 		return nil
 	}
-	defer resp.Body.Close()
-
-	// Read response body
-	body, err := ioutil.ReadAll(resp.Body)
 
 	// Parse response body as JSON
 	var result facetRes

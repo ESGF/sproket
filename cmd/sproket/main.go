@@ -30,8 +30,7 @@ type config struct {
 	version          bool
 	fieldKeys        bool
 	displayDataNodes bool
-	searchAPI        string
-	criteria         []sproket.Criteria
+	search           sproket.Search
 }
 
 func mutuallyExclude(opts ...bool) bool {
@@ -47,26 +46,27 @@ func mutuallyExclude(opts ...bool) bool {
 func (args *config) Init() error {
 
 	if args.conf != "" {
+		// Load config file
 		fileBytes, err := ioutil.ReadFile(args.conf)
 		if err != nil {
 			return fmt.Errorf("%s not found", args.conf)
 		}
+
+		// Validate JSON
 		if !(json.Valid(fileBytes)) {
 			return fmt.Errorf("%s does not contain valid JSON", args.conf)
 		}
 
-		var downloads sproket.Downloads
-		json.Unmarshal(fileBytes, &downloads)
-		if downloads.SAPI == "" {
+		// Load JSON config
+		json.Unmarshal(fileBytes, &args.search)
+		if args.search.API == "" {
 			return fmt.Errorf("search_api is required parameter in config file")
 		}
-		args.searchAPI = downloads.SAPI
-		args.criteria = downloads.Reqs
-		for _, c := range args.criteria {
-			c.Fields["replica"] = "*"
-			c.Fields["retracted"] = "false"
-			c.Fields["latest"] = "true"
-		}
+
+		// Hard set special fields
+		args.search.Fields["replica"] = "*"
+		args.search.Fields["retracted"] = "false"
+		args.search.Fields["latest"] = "true"
 	}
 	if _, err := os.Stat(args.outDir); os.IsNotExist(err) {
 		return fmt.Errorf("directory %s does not exist", args.outDir)
@@ -141,26 +141,22 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 	}
 }
 
-func getBySearch(criteria []sproket.Criteria, args *config) {
+func getBySearch(search sproket.Search, args *config) {
 
 	// Count files to be downloaded
 	totalFiles := 0
-	for _, c := range criteria {
-		if c.Disabled {
-			continue
-		}
-		c.Fields["replica"] = "false"
-		_, n := sproket.SearchURLs(&c, args.searchAPI, 0, 0)
-		if args.verbose {
-			fmt.Println(c)
-			fmt.Printf("found %d unique files to download\n", n)
-		}
-		totalFiles += n
+	search.Fields["replica"] = "false"
+	_, n := sproket.SearchURLs(&search, 0, 0)
+	if args.verbose {
+		fmt.Println(search)
+		fmt.Printf("found %d unique files to download\n", n)
 	}
-	fmt.Printf("total unique files: %d\n", totalFiles)
+	fmt.Printf("total unique files: %d\n", n)
 	if args.count {
 		return
 	}
+
+	// Block large download if not confirmed
 	if !(args.confirm) && totalFiles > 100 {
 		fmt.Println("too many files (>100): confirm download by specifying the -y option or refine search criteria")
 		return
@@ -176,21 +172,16 @@ func getBySearch(criteria []sproket.Criteria, args *config) {
 
 	// Begin grabbing sets of files to download
 	limit := 50
-	for _, c := range criteria {
-		if c.Disabled {
-			continue
+	cur := 0
+	for {
+		docs, remaining := sproket.SearchURLs(&search, cur, limit)
+		for _, doc := range docs {
+			docChan <- doc
 		}
-		cur := 0
-		for {
-			docs, remaining := sproket.SearchURLs(&c, args.searchAPI, cur, limit)
-			for _, doc := range docs {
-				docChan <- doc
-			}
-			if remaining == 0 {
-				break
-			}
-			cur += limit
+		if remaining == 0 {
+			break
 		}
+		cur += limit
 	}
 	close(docChan)
 	waiter.Wait()
@@ -204,51 +195,43 @@ func getByIDs(ids []string, args *config) {
 	if args.datasetIds {
 		idField = "dataset_id"
 	}
-	var criteria []sproket.Criteria
 	for _, id := range ids {
 		f := map[string]string{
 			idField: id,
 		}
-		c := sproket.Criteria{
+		search := sproket.Search{
 			Fields: f,
+			API:    args.search.API,
 		}
-		criteria = append(criteria, c)
+		getBySearch(search, args)
 	}
-	getBySearch(criteria, args)
 }
 
 func outputFields(args *config) {
-	for _, c := range args.criteria {
-		if c.Disabled {
-			continue
+
+	keys := sproket.SearchFields(&args.search)
+	sort.Strings(keys)
+	fmt.Println("criteria: ")
+	fmt.Println(args.search)
+	fmt.Println("field keys: ")
+	for _, key := range keys {
+		if !(strings.HasPrefix(key, "_")) {
+			fmt.Printf("  %s\n", key)
 		}
-		keys := sproket.SearchFields(&c, args.searchAPI)
-		sort.Strings(keys)
-		fmt.Println("criteria: ")
-		fmt.Println(c)
-		fmt.Println("field keys: ")
-		for _, key := range keys {
-			if !(strings.HasPrefix(key, "_")) {
-				fmt.Printf("  %s\n", key)
-			}
-		}
-		fmt.Println()
 	}
+	fmt.Println()
 }
 
 func outputDataNodes(args *config) {
-	for _, c := range args.criteria {
-		if c.Disabled {
-			continue
-		}
-		c.Fields["replica"] = "false"
-		dataNodes := sproket.DataNodes(&c, args.searchAPI)
-		_, n := sproket.SearchURLs(&c, args.searchAPI, 0, 0)
-		fmt.Println(&c)
-		for dataNode, count := range dataNodes {
-			fmt.Printf("%s has %d of the %d unique files\n", dataNode, count, n)
-		}
+
+	args.search.Fields["replica"] = "false"
+	dataNodes := sproket.DataNodes(&args.search)
+	_, n := sproket.SearchURLs(&args.search, 0, 0)
+	fmt.Println(args.search)
+	for dataNode, count := range dataNodes {
+		fmt.Printf("%s has %d of the %d unique files\n", dataNode, count, n)
 	}
+
 }
 
 func loadStdin() []string {
@@ -296,8 +279,8 @@ func main() {
 	} else if args.fileIds || args.datasetIds {
 		ids := loadStdin()
 		getByIDs(ids, &args)
-	} else if len(args.criteria) > 0 {
-		getBySearch(args.criteria, &args)
+	} else if len(args.search.Fields) > 0 {
+		getBySearch(args.search, &args)
 	} else {
 		flag.Usage()
 	}

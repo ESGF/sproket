@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -38,8 +37,8 @@ func (d *Doc) GetSum() string {
 }
 
 // SearchURLs returns a slice of up to "limit" download URLs
-func SearchURLs(c *Criteria, sAPI string, skip int, limit int) ([]Doc, int) {
-	q := buildQ(c)
+func SearchURLs(s *Search, skip int, limit int) ([]Doc, int) {
+	q := buildQ(s)
 	params := map[string]string{
 		"query":  q,
 		"type":   "File",
@@ -49,16 +48,11 @@ func SearchURLs(c *Criteria, sAPI string, skip int, limit int) ([]Doc, int) {
 		"offset": fmt.Sprintf("%d", skip),
 	}
 
-	// Perform query
-	resp, err := http.Get(Path(sAPI, params))
+	body, err := performSearch(s.API, params)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 		return nil, 0
 	}
-	defer resp.Body.Close()
-
-	// Read response body
-	body, err := ioutil.ReadAll(resp.Body)
 
 	// Parse response body as JSON
 	var result SearchRes
@@ -82,6 +76,23 @@ func SearchURLs(c *Criteria, sAPI string, skip int, limit int) ([]Doc, int) {
 	return docs, remaining
 }
 
+func performSearch(api string, params map[string]string) ([]byte, error) {
+
+	// Perform query
+	resp, err := http.Get(Path(api, params))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
 // Path builds an http path from host and params
 func Path(host string, params map[string]string) string {
 
@@ -95,12 +106,12 @@ func Path(host string, params map[string]string) string {
 	return out
 }
 
-func buildQ(c *Criteria) string {
-	if len(c.Fields) == 0 {
+func buildQ(s *Search) string {
+	if len(s.Fields) == 0 {
 		return "*:*"
 	}
 	var matches []string
-	for key, value := range c.Fields {
+	for key, value := range s.Fields {
 		match := fmt.Sprintf("%s:%s", key, value)
 		matches = append(matches, match)
 	}
