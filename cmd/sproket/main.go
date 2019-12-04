@@ -17,20 +17,21 @@ import (
 )
 
 type config struct {
-	conf       string
-	outDir     string
-	parallel   int
-	datasetIds bool
-	fileIds    bool
-	noDownload bool
-	verbose    bool
-	confirm    bool
-	count      bool
-	noVerify   bool
-	version    bool
-	fieldKeys  bool
-	searchAPI  string
-	criteria   []sproket.Criteria
+	conf             string
+	outDir           string
+	parallel         int
+	datasetIds       bool
+	fileIds          bool
+	noDownload       bool
+	verbose          bool
+	confirm          bool
+	count            bool
+	noVerify         bool
+	version          bool
+	fieldKeys        bool
+	displayDataNodes bool
+	searchAPI        string
+	criteria         []sproket.Criteria
 }
 
 func mutuallyExclude(opts ...bool) bool {
@@ -61,6 +62,11 @@ func (args *config) Init() error {
 		}
 		args.searchAPI = downloads.SAPI
 		args.criteria = downloads.Reqs
+		for _, c := range args.criteria {
+			c.Fields["replica"] = "*"
+			c.Fields["retracted"] = "false"
+			c.Fields["latest"] = "true"
+		}
 	}
 	if _, err := os.Stat(args.outDir); os.IsNotExist(err) {
 		return fmt.Errorf("directory %s does not exist", args.outDir)
@@ -143,14 +149,15 @@ func getBySearch(criteria []sproket.Criteria, args *config) {
 		if c.Disabled {
 			continue
 		}
+		c.Fields["replica"] = "false"
 		_, n := sproket.SearchURLs(&c, args.searchAPI, 0, 0)
 		if args.verbose {
 			fmt.Println(c)
-			fmt.Printf("found %d files to download\n", n)
+			fmt.Printf("found %d unique files to download\n", n)
 		}
 		totalFiles += n
 	}
-	fmt.Printf("total files: %d\n", totalFiles)
+	fmt.Printf("total unique files: %d\n", totalFiles)
 	if args.count {
 		return
 	}
@@ -169,7 +176,6 @@ func getBySearch(criteria []sproket.Criteria, args *config) {
 
 	// Begin grabbing sets of files to download
 	limit := 50
-	started := 0
 	for _, c := range criteria {
 		if c.Disabled {
 			continue
@@ -179,10 +185,6 @@ func getBySearch(criteria []sproket.Criteria, args *config) {
 			docs, remaining := sproket.SearchURLs(&c, args.searchAPI, cur, limit)
 			for _, doc := range docs {
 				docChan <- doc
-			}
-			started += len(docs)
-			if args.verbose {
-				fmt.Printf("downloads started: %d of %d\n", started, totalFiles)
 			}
 			if remaining == 0 {
 				break
@@ -216,14 +218,14 @@ func getByIDs(ids []string, args *config) {
 }
 
 func outputFields(args *config) {
-	for i := 0; i < len(args.criteria); i++ {
-		if args.criteria[i].Disabled {
+	for _, c := range args.criteria {
+		if c.Disabled {
 			continue
 		}
-		keys := sproket.SearchFields(&args.criteria[i], args.searchAPI)
+		keys := sproket.SearchFields(&c, args.searchAPI)
 		sort.Strings(keys)
 		fmt.Println("criteria: ")
-		fmt.Println(args.criteria[i])
+		fmt.Println(c)
 		fmt.Println("field keys: ")
 		for _, key := range keys {
 			if !(strings.HasPrefix(key, "_")) {
@@ -231,6 +233,21 @@ func outputFields(args *config) {
 			}
 		}
 		fmt.Println()
+	}
+}
+
+func outputDataNodes(args *config) {
+	for _, c := range args.criteria {
+		if c.Disabled {
+			continue
+		}
+		c.Fields["replica"] = "false"
+		dataNodes := sproket.DataNodes(&c, args.searchAPI)
+		_, n := sproket.SearchURLs(&c, args.searchAPI, 0, 0)
+		fmt.Println(&c)
+		for dataNode, count := range dataNodes {
+			fmt.Printf("%s has %d of the %d unique files\n", dataNode, count, n)
+		}
 	}
 }
 
@@ -259,6 +276,7 @@ func main() {
 	flag.BoolVar(&args.confirm, "y", false, "Flag to confirm larger downloads")
 	flag.BoolVar(&args.noVerify, "no.verify", false, "Flag to skip sha256 verification")
 	flag.BoolVar(&args.fieldKeys, "field.keys", false, "Flag to output possible field keys. The outputted list may be incomplete for complicated reasons.")
+	flag.BoolVar(&args.displayDataNodes, "data.nodes", false, "Flag to output data nodes that serve the files that match each criteria")
 	flag.BoolVar(&args.count, "count", false, "Flag to only count number of files that would be attempted to be downloaded")
 	flag.BoolVar(&args.version, "version", false, "Flag to output the version and exit")
 	flag.Parse()
@@ -271,7 +289,9 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	if args.fieldKeys {
+	if args.displayDataNodes {
+		outputDataNodes(&args)
+	} else if args.fieldKeys {
 		outputFields(&args)
 	} else if args.fileIds || args.datasetIds {
 		ids := loadStdin()

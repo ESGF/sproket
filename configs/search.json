@@ -7,12 +7,10 @@
             }
         },
         {
-            "disabled": true,
+            "disabled": false,
             "fields": {
-                "data_node": "esgf-data1.llnl.gov",
+                "data_node": "*",
                 "variable_id": "/orog|mrr(.*)/",
-                "-retracted": "true",
-                "replica": "false",
                 "project": "CMIP6"
             }
         }
