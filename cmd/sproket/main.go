@@ -308,26 +308,35 @@ func outputDataNodes(args *config) {
 	// Ensure all files are counted
 	args.search.Fields["replica"] = "*"
 
+	var dataNodeOutput []string
 	// Get data node counts and total count
 	dataNodes := sproket.DataNodes(&args.search)
 
+	for dataNode := range dataNodes {
+		dataNodeOutput = append(dataNodeOutput, dataNode)
+	}
+	sort.Strings(dataNodeOutput)
 	// Output info
 	fmt.Println("including replication:")
 	fmt.Println(args.search)
-	for dataNode := range dataNodes {
+	for _, dataNode := range dataNodeOutput {
 		fmt.Println(dataNode)
 	}
 	fmt.Println()
+
 	// Ensure only unique files are output
 	args.search.Fields["replica"] = "false"
-
-	// Get data node counts and total count
 	dataNodes = sproket.DataNodes(&args.search)
 
+	dataNodeOutput = nil
+	for dataNode := range dataNodes {
+		dataNodeOutput = append(dataNodeOutput, dataNode)
+	}
+	sort.Strings(dataNodeOutput)
 	// Output info
 	fmt.Println("excluding replication:")
 	fmt.Println(args.search)
-	for dataNode := range dataNodes {
+	for _, dataNode := range dataNodeOutput {
 		fmt.Println(dataNode)
 	}
 }
