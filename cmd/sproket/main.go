@@ -146,7 +146,7 @@ func getBySearch(search sproket.Search, args *config) {
 			return
 		}
 
-		// Check for any matching data nodes
+		// Check for any matching data nodes in data node priority list
 		foundAlternateDataNode := false
 		for dataNode := range dataNodes {
 			for _, prefferedDataNode := range search.DataNodePriority {
@@ -189,7 +189,7 @@ func getBySearch(search sproket.Search, args *config) {
 		go getData(id, docChan, &waiter, args)
 	}
 
-	// Get all true latest docs. This means (replica:false && latest:true)
+	// Get all true latest docs. This means replica:false && latest:true && data_node:*
 	allTrueLatestDocs := make(map[string]map[string]sproket.Doc)
 	limit := 250
 	cur := 0
@@ -208,9 +208,7 @@ func getBySearch(search sproket.Search, args *config) {
 		}
 		cur += limit
 	}
-	if args.verbose {
-		fmt.Printf("%d true latest docs\n", len(allTrueLatestDocs))
-	}
+
 	// Seek out alternate sources only if user has hard or soft data node requirements
 	if hardDataNode || args.softDataNode {
 
@@ -222,6 +220,7 @@ func getBySearch(search sproket.Search, args *config) {
 		// Consider all available data sources
 		search.Fields["replica"] = "*"
 		if args.verbose {
+			fmt.Printf("%d true latest docs\n", len(allTrueLatestDocs))
 			fmt.Println(search)
 		}
 		// A replica is marked as replica:true, but it is not gaurenteed to be a "true" replica
