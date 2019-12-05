@@ -1,2 +1,0 @@
-CMIP6.CMIP.UA.MCM-UA-1-0.abrupt-4xCO2.r1i1p1f1.fx.orog.gn.v20190731.orog_fx_MCM-UA-1-0_abrupt-4xCO2_r1i1p1f1_gn.nc|esgf-data1.llnl.gov
-CMIP6.CMIP.UA.MCM-UA-1-0.abrupt-4xCO2.r1i1p1f1.Lmon.mrros.gn.v20190731.mrros_Lmon_MCM-UA-1-0_abrupt-4xCO2_r1i1p1f1_gn_000101-010012.nc|esgf-data1.llnl.gov

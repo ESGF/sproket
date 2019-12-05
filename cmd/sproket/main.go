@@ -128,18 +128,6 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 	}
 }
 
-func dedupDocs(docs []sproket.Doc) []sproket.Doc {
-	docSet := make(map[string]bool)
-	var outDocs []sproket.Doc
-	for _, doc := range docs {
-		if _, in := docSet[doc.GetSum()]; !(in) {
-			docSet[doc.GetSum()] = true
-			outDocs = append(outDocs, doc)
-		}
-	}
-	return outDocs
-}
-
 func getBySearch(search sproket.Search, args *config) {
 
 	// Getting an accurate count of files to be downloaded, efficiently, is non-trivial
@@ -355,7 +343,7 @@ func main() {
 	flag.BoolVar(&args.confirm, "y", false, "Flag to confirm larger downloads")
 	flag.BoolVar(&args.noVerify, "no.verify", false, "Flag to skip sha256 verification")
 	flag.BoolVar(&args.fieldKeys, "field.keys", false, "Flag to output possible field keys. The outputted list may be incomplete for complicated reasons.")
-	flag.BoolVar(&args.displayDataNodes, "data.nodes", false, "Flag to output data nodes that serve the files that match each criteria")
+	flag.BoolVar(&args.displayDataNodes, "data.nodes", false, "Flag to output data nodes that serve the files that match the criteria")
 	flag.BoolVar(&args.count, "count", false, "Flag to only count number of files that would be attempted to be downloaded")
 	flag.BoolVar(&args.version, "version", false, "Flag to output the version and exit")
 	flag.Parse()
