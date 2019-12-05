@@ -1,8 +1,9 @@
 {
     "search_api": "https://esgf-node.llnl.gov/esg-search/search/",
+    "data_node_priority": ["aims3.llnl.gov"],
     "fields": {
-        "data_node": "*",
-        "variable_id": "/orog|mrr(.*)/",
+        "experiment_id": "amip*",
+        "variable_id": "/bddtdip|burntFractionAll/",
         "project": "CMIP6"
     }
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -20,8 +19,6 @@ type config struct {
 	conf             string
 	outDir           string
 	parallel         int
-	datasetIds       bool
-	fileIds          bool
 	noDownload       bool
 	verbose          bool
 	confirm          bool
@@ -30,17 +27,8 @@ type config struct {
 	version          bool
 	fieldKeys        bool
 	displayDataNodes bool
+	softDataNode     bool
 	search           sproket.Search
-}
-
-func mutuallyExclude(opts ...bool) bool {
-	sum := 0
-	for _, opt := range opts {
-		if opt {
-			sum++
-		}
-	}
-	return sum > 1
 }
 
 func (args *config) Init() error {
@@ -67,12 +55,11 @@ func (args *config) Init() error {
 		args.search.Fields["replica"] = "*"
 		args.search.Fields["retracted"] = "false"
 		args.search.Fields["latest"] = "true"
+
+		args.softDataNode = (len(args.search.DataNodePriority) != 0)
 	}
 	if _, err := os.Stat(args.outDir); os.IsNotExist(err) {
 		return fmt.Errorf("directory %s does not exist", args.outDir)
-	}
-	if mutuallyExclude(args.fileIds, args.datasetIds) {
-		return errors.New("incompatible arguments, -file.ids and -dataset.ids are mutually exclusive")
 	}
 	return nil
 }
@@ -109,7 +96,7 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 			}
 		} else {
 
-			dest := fmt.Sprintf("%s/%s", args.outDir, doc.ID)
+			dest := fmt.Sprintf("%s/%s", args.outDir, doc.InstanceID)
 
 			// Check if present and correct
 			if _, err := os.Stat(dest); err == nil {
@@ -141,28 +128,72 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 	}
 }
 
+func dedupDocs(docs []sproket.Doc) []sproket.Doc {
+	docSet := make(map[string]bool)
+	var outDocs []sproket.Doc
+	for _, doc := range docs {
+		if _, in := docSet[doc.GetSum()]; !(in) {
+			docSet[doc.GetSum()] = true
+			outDocs = append(outDocs, doc)
+		}
+	}
+	return outDocs
+}
+
 func getBySearch(search sproket.Search, args *config) {
 
-	// Count files to be downloaded
-	totalFiles := 0
+	// Getting an accurate count of files to be downloaded, efficiently, is non-trivial
+
+	// save hard data node requirements in order to prepare to get a proper count
+	dataNodeReqs, hardDataNode := search.Fields["data_node"]
+
+	// Efficiently check if a hard data node requirement results in 0 files
+	//   or if the soft data node list will even matter
+	if hardDataNode || args.softDataNode {
+		search.Fields["replica"] = "*"
+		dataNodes := sproket.DataNodes(&search)
+		if len(dataNodes) == 0 {
+			fmt.Println(search)
+			fmt.Println("found 0 files for download")
+			return
+		}
+
+		// Check for any matching data nodes
+		foundAlternateDataNode := false
+		for dataNode := range dataNodes {
+			for _, prefferedDataNode := range search.DataNodePriority {
+				if dataNode == prefferedDataNode {
+					foundAlternateDataNode = true
+				}
+			}
+		}
+		if !(foundAlternateDataNode) {
+			if args.verbose {
+				fmt.Println("no matches in data node priority list")
+			}
+			args.softDataNode = false
+		}
+	}
+	// latest has already been set to true and retracted has already been set to false
+	// set replica to false to ensure only original files are found
 	search.Fields["replica"] = "false"
-	_, n := sproket.SearchURLs(&search, 0, 0)
-	if args.verbose {
-		fmt.Println(search)
-		fmt.Printf("found %d unique files to download\n", n)
-	}
-	fmt.Printf("total unique files: %d\n", n)
-	if args.count {
-		return
+
+	if !(hardDataNode) && !(args.softDataNode) {
+		_, n := sproket.SearchURLs(&search, 0, 0)
+		fmt.Printf("found %d files for download\n", n)
+		if args.count {
+			return
+		}
+		if !(args.confirm) && n > 100 {
+			fmt.Println("too many files (>100): confirm larger download by specifying the -y option or refine search criteria")
+			return
+		}
 	}
 
-	// Block large download if not confirmed
-	if !(args.confirm) && totalFiles > 100 {
-		fmt.Println("too many files (>100): confirm download by specifying the -y option or refine search criteria")
-		return
-	}
+	// temporarily remove any hard data node requirements in order to prepare to get a proper count
+	search.Fields["data_node"] = "*"
 
-	// Set up concurrent workers
+	// Setup download workers
 	docChan := make(chan sproket.Doc)
 	waiter := sync.WaitGroup{}
 	for id := 0; id < args.parallel; id++ {
@@ -170,45 +201,107 @@ func getBySearch(search sproket.Search, args *config) {
 		go getData(id, docChan, &waiter, args)
 	}
 
-	// Begin grabbing sets of files to download
-	limit := 50
+	// Get all true latest docs. This means (replica:false && latest:true)
+	allTrueLatestDocs := make(map[string]map[string]sproket.Doc)
+	limit := 250
 	cur := 0
 	for {
 		docs, remaining := sproket.SearchURLs(&search, cur, limit)
 		for _, doc := range docs {
-			docChan <- doc
+			if !(hardDataNode) && !(args.softDataNode) {
+				docChan <- doc
+			} else {
+				allTrueLatestDocs[doc.InstanceID] = make(map[string]sproket.Doc)
+				allTrueLatestDocs[doc.InstanceID][doc.DataNode] = doc
+			}
 		}
 		if remaining == 0 {
 			break
 		}
 		cur += limit
 	}
+	if args.verbose {
+		fmt.Printf("%d true latest docs\n", len(allTrueLatestDocs))
+	}
+	// Seek out alternate sources only if user has hard or soft data node requirements
+	if hardDataNode || args.softDataNode {
+
+		// restore data node requirement in order to find any true replicas on the required data nodes, if needed
+		if hardDataNode {
+			search.Fields["data_node"] = dataNodeReqs
+		}
+
+		// Consider all available data sources
+		search.Fields["replica"] = "*"
+		if args.verbose {
+			fmt.Println(search)
+		}
+		// A replica is marked as replica:true, but it is not gaurenteed to be a "true" replica
+		// A true replica has the same version, and thus instance id, as its corresponding true latest document (where replica:false && latest:true)
+		allDesiredDocs := make(map[string]map[string]sproket.Doc)
+		cur = 0
+		for {
+			docs, remaining := sproket.SearchURLs(&search, cur, limit)
+			for _, doc := range docs {
+				if _, in := allTrueLatestDocs[doc.InstanceID]; in {
+					if allDesiredDocs[doc.InstanceID] == nil {
+						allDesiredDocs[doc.InstanceID] = make(map[string]sproket.Doc)
+					}
+					allDesiredDocs[doc.InstanceID][doc.DataNode] = doc
+				}
+			}
+			if remaining == 0 {
+				break
+			}
+			cur += limit
+		}
+
+		fmt.Printf("found %d files for download\n", len(allDesiredDocs))
+		if args.count {
+			close(docChan)
+			waiter.Wait()
+			return
+		}
+		if !(args.confirm) && len(allDesiredDocs) > 100 {
+			fmt.Println("too many files (>100): confirm larger download by specifying the -y option or refine search criteria")
+			return
+		}
+		jobsSubmitted := 0
+		prefJobsSubmitted := 0
+		for _, dataNodeMap := range allDesiredDocs {
+			foundPreffered := false
+			for _, prefferedDataNode := range search.DataNodePriority {
+				for dataNode, doc := range dataNodeMap {
+					if prefferedDataNode == dataNode {
+						docChan <- doc
+						foundPreffered = true
+						jobsSubmitted++
+						prefJobsSubmitted++
+						break
+					}
+				}
+				if foundPreffered {
+					break
+				}
+			}
+			if !(foundPreffered) {
+				for _, doc := range dataNodeMap {
+					docChan <- doc
+					jobsSubmitted++
+					break
+				}
+			}
+		}
+		fmt.Printf("%d downloads submitted total\n", jobsSubmitted)
+		fmt.Printf("%d preferred downloads submitted\n", prefJobsSubmitted)
+	}
 	close(docChan)
 	waiter.Wait()
 }
 
-func getByIDs(ids []string, args *config) {
-	var idField string
-	if args.fileIds {
-		idField = "id"
-	}
-	if args.datasetIds {
-		idField = "dataset_id"
-	}
-	for _, id := range ids {
-		f := map[string]string{
-			idField: id,
-		}
-		search := sproket.Search{
-			Fields: f,
-			API:    args.search.API,
-		}
-		getBySearch(search, args)
-	}
-}
-
 func outputFields(args *config) {
 
+	// Grab sample fields from a single search result
 	keys := sproket.SearchFields(&args.search)
 	sort.Strings(keys)
 	fmt.Println("criteria: ")
@@ -224,26 +317,31 @@ func outputFields(args *config) {
 
 func outputDataNodes(args *config) {
 
-	args.search.Fields["replica"] = "false"
+	// Ensure all files are counted
+	args.search.Fields["replica"] = "*"
+
+	// Get data node counts and total count
 	dataNodes := sproket.DataNodes(&args.search)
-	_, n := sproket.SearchURLs(&args.search, 0, 0)
+
+	// Output info
+	fmt.Println("including replication:")
 	fmt.Println(args.search)
-	for dataNode, count := range dataNodes {
-		fmt.Printf("%s has %d of the %d unique files\n", dataNode, count, n)
+	for dataNode := range dataNodes {
+		fmt.Println(dataNode)
 	}
+	fmt.Println()
+	// Ensure only unique files are output
+	args.search.Fields["replica"] = "false"
 
-}
+	// Get data node counts and total count
+	dataNodes = sproket.DataNodes(&args.search)
 
-func loadStdin() []string {
-	scanner := bufio.NewScanner(os.Stdin)
-	var strs []string
-	for scanner.Scan() {
-		strs = append(strs, scanner.Text())
+	// Output info
+	fmt.Println("excluding replication:")
+	fmt.Println(args.search)
+	for dataNode := range dataNodes {
+		fmt.Println(dataNode)
 	}
-	if err := scanner.Err(); err != nil {
-		panic(err)
-	}
-	return strs
 }
 
 func main() {
@@ -252,8 +350,6 @@ func main() {
 	flag.StringVar(&args.conf, "config", "", "Path to config file")
 	flag.StringVar(&args.outDir, "out.dir", "./", "Path to directory to put downloads in")
 	flag.IntVar(&args.parallel, "p", 4, "Max number of concurrent downloads")
-	flag.BoolVar(&args.datasetIds, "dataset.ids", false, "Flag to indicate dataset ids are being provided on standard in")
-	flag.BoolVar(&args.fileIds, "file.ids", false, "Flag to indicate file ids are being provided on standard in")
 	flag.BoolVar(&args.noDownload, "no.download", false, "Flag to indicate no downloads should be performed")
 	flag.BoolVar(&args.verbose, "verbose", false, "Flag to indicate output should be verbose")
 	flag.BoolVar(&args.confirm, "y", false, "Flag to confirm larger downloads")
@@ -264,7 +360,7 @@ func main() {
 	flag.BoolVar(&args.version, "version", false, "Flag to output the version and exit")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.0.2\n")
+		fmt.Printf("v0.1.0\n")
 		return
 	}
 	err := args.Init()
@@ -276,9 +372,6 @@ func main() {
 		outputDataNodes(&args)
 	} else if args.fieldKeys {
 		outputFields(&args)
-	} else if args.fileIds || args.datasetIds {
-		ids := loadStdin()
-		getByIDs(ids, &args)
 	} else if len(args.search.Fields) > 0 {
 		getBySearch(args.search, &args)
 	} else {

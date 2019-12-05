@@ -22,10 +22,11 @@ type Response struct {
 
 // Doc holds a single search result document, in this case these are ESGF data files
 type Doc struct {
-	URLs    []string `json:"url"`
-	ID      string   `json:"id"`
-	Sum     []string `json:"checksum"`
-	HTTPURL string
+	URLs       []string `json:"url"`
+	InstanceID string   `json:"instance_id"`
+	DataNode   string   `json:"data_node"`
+	Sum        []string `json:"checksum"`
+	HTTPURL    string
 }
 
 // GetSum returns the checksum, since the checksum is stored as a multivalued field
@@ -43,7 +44,7 @@ func SearchURLs(s *Search, skip int, limit int) ([]Doc, int) {
 		"query":  q,
 		"type":   "File",
 		"format": "application/solr+json",
-		"fields": "id,url,checksum",
+		"fields": "instance_id,url,checksum,data_node",
 		"limit":  fmt.Sprintf("%d", limit),
 		"offset": fmt.Sprintf("%d", skip),
 	}
