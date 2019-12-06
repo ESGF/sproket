@@ -166,7 +166,7 @@ func getBySearch(search sproket.Search, args *config) {
 	// set replica to false to ensure only original files are found
 	search.Fields["replica"] = "false"
 
-	if !(hardDataNode) && !(args.softDataNode) {
+	if !(hardDataNode) {
 		_, n := sproket.SearchURLs(&search, 0, 0)
 		fmt.Printf("found %d files for download\n", n)
 		if args.count {
@@ -356,7 +356,7 @@ func main() {
 	flag.BoolVar(&args.version, "version", false, "Flag to output the version and exit")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.1.0\n")
+		fmt.Printf("v0.1.1\n")
 		return
 	}
 	err := args.Init()
