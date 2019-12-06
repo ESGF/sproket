@@ -1,11 +1,13 @@
 package main
 
 import (
+	"crypto/md5"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"hash"
 	"io"
 	"io/ioutil"
 	"os"
@@ -64,22 +66,34 @@ func (args *config) Init() error {
 	return nil
 }
 
-func verify(dest string, sha256sum string) error {
+func verify(dest string, remoteSum string, remoteSumType string) error {
 
-	if sha256sum == "" {
+	if remoteSum == "" || remoteSumType == "" {
 		return fmt.Errorf("could not retrieve checksum for %s", dest)
 	}
 	f, err := os.Open(dest)
 	if err != nil {
 		return err
 	}
-	hash := sha256.New()
+	defer f.Close()
+
+	var hash hash.Hash
+	switch remoteSumType {
+	case "MD5":
+		hash = md5.New()
+	case "SHA256":
+		hash = sha256.New()
+	default:
+		return fmt.Errorf("unrecognized checksum_type: %s", remoteSumType)
+	}
+
 	if _, err := io.Copy(hash, f); err != nil {
 		return err
 	}
 	res := fmt.Sprintf("%x", hash.Sum(nil))
-	if res != sha256sum {
-		return errors.New("sha256 verification failure")
+	if res != remoteSum {
+		fmt.Printf("%s\n%s", res, remoteSum)
+		return errors.New("checksum verification failure")
 	}
 	return nil
 }
@@ -100,7 +114,7 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 
 			// Check if present and correct
 			if _, err := os.Stat(dest); err == nil {
-				err := verify(dest, doc.GetSum())
+				err := verify(dest, doc.GetSum(), doc.GetSumType())
 				if err != nil {
 					fmt.Println(err)
 				} else {
@@ -117,7 +131,7 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 
 			// Verify checksum, if available and desired
 			if !(args.noVerify) {
-				err := verify(dest, doc.GetSum())
+				err := verify(dest, doc.GetSum(), doc.GetSumType())
 				if err != nil {
 					fmt.Println(err)
 				} else if args.verbose {

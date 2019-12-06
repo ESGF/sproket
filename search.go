@@ -26,6 +26,7 @@ type Doc struct {
 	InstanceID string   `json:"instance_id"`
 	DataNode   string   `json:"data_node"`
 	Sum        []string `json:"checksum"`
+	SumType    []string `json:"checksum_type"`
 	HTTPURL    string
 }
 
@@ -37,6 +38,14 @@ func (d *Doc) GetSum() string {
 	return d.Sum[0]
 }
 
+// GetSumType returns the checksum, since the checksum is stored as a multivalued field
+func (d *Doc) GetSumType() string {
+	if len(d.Sum) != 1 {
+		return ""
+	}
+	return d.SumType[0]
+}
+
 // SearchURLs returns a slice of up to "limit" download URLs
 func SearchURLs(s *Search, skip int, limit int) ([]Doc, int) {
 	q := buildQ(s)
@@ -44,7 +53,7 @@ func SearchURLs(s *Search, skip int, limit int) ([]Doc, int) {
 		"query":  q,
 		"type":   "File",
 		"format": "application/solr+json",
-		"fields": "instance_id,url,checksum,data_node",
+		"fields": "instance_id,url,checksum,data_node,checksum_type",
 		"limit":  fmt.Sprintf("%d", limit),
 		"offset": fmt.Sprintf("%d", skip),
 	}
