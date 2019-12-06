@@ -148,7 +148,8 @@ func getBySearch(search sproket.Search, args *config) {
 	// Check if the soft data node list will even matter
 	dataNodeMatches := make(map[string]bool)
 	if args.softDataNode {
-		// Check for any matching data nodes in data node priority list
+		// Check for any matching replica data nodes in data node priority list
+		search.Fields["replica"] = "true"
 		dataNodes := sproket.DataNodes(&search)
 		for dataNode := range dataNodes {
 			for _, preferedDataNode := range search.DataNodePriority {
@@ -162,7 +163,6 @@ func getBySearch(search sproket.Search, args *config) {
 			fmt.Println(dataNodeMatches)
 		}
 		if len(dataNodeMatches) == 0 {
-			fmt.Println("no matches in data node priority list")
 			args.softDataNode = false
 		}
 	}
