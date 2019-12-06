@@ -55,6 +55,7 @@ func (args *config) Init() error {
 
 		// Hard set special fields
 		args.search.Fields["replica"] = "*"
+		args.search.Fields["data_node"] = "*"
 		args.search.Fields["retracted"] = "false"
 		args.search.Fields["latest"] = "true"
 
@@ -92,7 +93,7 @@ func verify(dest string, remoteSum string, remoteSumType string) error {
 	}
 	res := fmt.Sprintf("%x", hash.Sum(nil))
 	if res != remoteSum {
-		fmt.Printf("%s\n%s", res, remoteSum)
+		fmt.Printf("%s != %s\n", res, remoteSum)
 		return errors.New("checksum verification failure")
 	}
 	return nil
@@ -144,58 +145,41 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 
 func getBySearch(search sproket.Search, args *config) {
 
-	// Getting an accurate count of files to be downloaded, efficiently, is non-trivial
-
-	// save hard data node requirements in order to prepare to get a proper count
-	dataNodeReqs, hardDataNode := search.Fields["data_node"]
-
-	// Efficiently check if a hard data node requirement results in 0 files
-	//   or if the soft data node list will even matter
-	if hardDataNode || args.softDataNode {
-		search.Fields["replica"] = "*"
-		dataNodes := sproket.DataNodes(&search)
-		if len(dataNodes) == 0 {
-			fmt.Println(search)
-			fmt.Println("found 0 files for download")
-			return
-		}
-
+	// Check if the soft data node list will even matter
+	dataNodeMatches := make(map[string]bool)
+	if args.softDataNode {
 		// Check for any matching data nodes in data node priority list
-		foundAlternateDataNode := false
+		dataNodes := sproket.DataNodes(&search)
 		for dataNode := range dataNodes {
-			for _, prefferedDataNode := range search.DataNodePriority {
-				if dataNode == prefferedDataNode {
-					foundAlternateDataNode = true
+			for _, preferedDataNode := range search.DataNodePriority {
+				if dataNode == preferedDataNode {
+					dataNodeMatches[dataNode] = true
 				}
 			}
 		}
-		if !(foundAlternateDataNode) {
-			if args.verbose {
-				fmt.Println("no matches in data node priority list")
-			}
+		if args.verbose {
+			fmt.Println("matching data nodes:")
+			fmt.Println(dataNodeMatches)
+		}
+		if len(dataNodeMatches) == 0 {
+			fmt.Println("no matches in data node priority list")
 			args.softDataNode = false
 		}
 	}
-	// latest has already been set to true and retracted has already been set to false
-	// set replica to false to ensure only original files are found
-	search.Fields["replica"] = "false"
 
-	if !(hardDataNode) {
-		_, n := sproket.SearchURLs(&search, 0, 0)
-		fmt.Printf("found %d files for download\n", n)
-		if args.count {
-			return
-		}
-		if !(args.confirm) && n > 100 {
-			fmt.Println("too many files (>100): confirm larger download by specifying the -y option or refine search criteria")
-			return
-		}
+	// Count original files, only files with replica: false entries present in the index will be downloaded
+	search.Fields["replica"] = "false"
+	_, n := sproket.SearchURLs(&search, 0, 0)
+	fmt.Printf("found %d files for download\n", n)
+	if args.count || n == 0 {
+		return
+	}
+	if !(args.confirm) && n > 100 {
+		fmt.Println("too many files (>100): confirm larger download by specifying the -y option or refine search criteria")
+		return
 	}
 
-	// temporarily remove any hard data node requirements in order to prepare to get a proper count
-	search.Fields["data_node"] = "*"
-
-	// Setup download workers
+	// Setup download workers in case data node does not matter and for later
 	docChan := make(chan sproket.Doc)
 	waiter := sync.WaitGroup{}
 	for id := 0; id < args.parallel; id++ {
@@ -203,18 +187,18 @@ func getBySearch(search sproket.Search, args *config) {
 		go getData(id, docChan, &waiter, args)
 	}
 
-	// Get all true latest docs. This means replica:false && latest:true && data_node:*
-	allTrueLatestDocs := make(map[string]map[string]sproket.Doc)
+	// Get documents that are all originals and assurred to be the true latest files
+	allDocs := make(map[string]map[string]sproket.Doc)
 	limit := 250
 	cur := 0
 	for {
 		docs, remaining := sproket.SearchURLs(&search, cur, limit)
 		for _, doc := range docs {
-			if !(hardDataNode) && !(args.softDataNode) {
+			if !(args.softDataNode) {
 				docChan <- doc
 			} else {
-				allTrueLatestDocs[doc.InstanceID] = make(map[string]sproket.Doc)
-				allTrueLatestDocs[doc.InstanceID][doc.DataNode] = doc
+				allDocs[doc.InstanceID] = make(map[string]sproket.Doc)
+				allDocs[doc.InstanceID][doc.DataNode] = doc
 			}
 		}
 		if remaining == 0 {
@@ -223,32 +207,25 @@ func getBySearch(search sproket.Search, args *config) {
 		cur += limit
 	}
 
-	// Seek out alternate sources only if user has hard or soft data node requirements
-	if hardDataNode || args.softDataNode {
+	// Find replica options if desired
+	if args.softDataNode {
+		cur = 0
+		search.Fields["replica"] = "true"
 
-		// restore data node requirement in order to find any true replicas on the required data nodes, if needed
-		if hardDataNode {
-			search.Fields["data_node"] = dataNodeReqs
+		var validDataOptions []string
+		for dataNodeMatch := range dataNodeMatches {
+			validDataOptions = append(validDataOptions, dataNodeMatch)
 		}
-
-		// Consider all available data sources
-		search.Fields["replica"] = "*"
+		search.Fields["data_node"] = "(" + strings.Join(validDataOptions, " OR ") + ")"
 		if args.verbose {
-			fmt.Printf("%d true latest docs\n", len(allTrueLatestDocs))
 			fmt.Println(search)
 		}
-		// A replica is marked as replica:true, but it is not gaurenteed to be a "true" replica
-		// A true replica has the same version, and thus instance id, as its corresponding true latest document (where replica:false && latest:true)
-		allDesiredDocs := make(map[string]map[string]sproket.Doc)
-		cur = 0
 		for {
 			docs, remaining := sproket.SearchURLs(&search, cur, limit)
 			for _, doc := range docs {
-				if _, in := allTrueLatestDocs[doc.InstanceID]; in {
-					if allDesiredDocs[doc.InstanceID] == nil {
-						allDesiredDocs[doc.InstanceID] = make(map[string]sproket.Doc)
-					}
-					allDesiredDocs[doc.InstanceID][doc.DataNode] = doc
+				_, in := allDocs[doc.InstanceID]
+				if in {
+					allDocs[doc.InstanceID][doc.DataNode] = doc
 				}
 			}
 			if remaining == 0 {
@@ -257,19 +234,9 @@ func getBySearch(search sproket.Search, args *config) {
 			cur += limit
 		}
 
-		fmt.Printf("found %d files for download\n", len(allDesiredDocs))
-		if args.count {
-			close(docChan)
-			waiter.Wait()
-			return
-		}
-		if !(args.confirm) && len(allDesiredDocs) > 100 {
-			fmt.Println("too many files (>100): confirm larger download by specifying the -y option or refine search criteria")
-			return
-		}
 		jobsSubmitted := 0
 		prefJobsSubmitted := 0
-		for _, dataNodeMap := range allDesiredDocs {
+		for _, dataNodeMap := range allDocs {
 			foundPreffered := false
 			for _, prefferedDataNode := range search.DataNodePriority {
 				for dataNode, doc := range dataNodeMap {
