@@ -169,6 +169,9 @@ func getBySearch(search sproket.Search, args *config) {
 
 	// Count original files, only files with replica: false entries present in the index will be downloaded
 	search.Fields["replica"] = "false"
+	if args.verbose {
+		fmt.Println(search)
+	}
 	_, n := sproket.SearchURLs(&search, 0, 0)
 	fmt.Printf("found %d files for download\n", n)
 	if args.count || n == 0 {
@@ -216,7 +219,7 @@ func getBySearch(search sproket.Search, args *config) {
 		for dataNodeMatch := range dataNodeMatches {
 			validDataOptions = append(validDataOptions, dataNodeMatch)
 		}
-		search.Fields["data_node"] = "(" + strings.Join(validDataOptions, " OR ") + ")"
+		search.Fields["data_node"] = strings.Join(validDataOptions, " OR ")
 		if args.verbose {
 			fmt.Println(search)
 		}
