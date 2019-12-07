@@ -340,7 +340,7 @@ func main() {
 	flag.BoolVar(&args.version, "version", false, "Flag to output the version and exit")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.1.1\n")
+		fmt.Printf("v0.2.1\n")
 		return
 	}
 	err := args.Init()
