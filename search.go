@@ -122,7 +122,7 @@ func buildQ(s *Search) string {
 	}
 	var matches []string
 	for key, value := range s.Fields {
-		match := fmt.Sprintf("%s:%s", key, value)
+		match := fmt.Sprintf("%s:(%s)", key, value)
 		matches = append(matches, match)
 	}
 	return strings.Join(matches, " AND ")
