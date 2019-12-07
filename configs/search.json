@@ -1,9 +1,12 @@
 {
     "search_api": "https://esgf-node.llnl.gov/esg-search/search/",
-    "data_node_priority": ["aims3.llnl.gov"],
+    "data_node_priority": ["aims3.llnl.gov", "esgf-data1.llnl.gov"],
     "fields": {
-        "experiment_id": "amip*",
-        "variable_id": "/bddtdip|burntFractionAll/",
+        "variable_id": "ps",
+        "experiment_id": "historical",
+        "source_id": "FGOALS-g3",
+        "table_id": "Amon",
+        "variant_label": "r1i1p1f1",
         "project": "CMIP6"
     }
 }
