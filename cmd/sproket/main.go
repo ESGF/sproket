@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"hash"
@@ -94,7 +93,7 @@ func verify(dest string, remoteSum string, remoteSumType string) error {
 	res := fmt.Sprintf("%x", hash.Sum(nil))
 	if res != remoteSum {
 		fmt.Printf("%s != %s\n", res, remoteSum)
-		return errors.New("checksum verification failure")
+		return fmt.Errorf("checksum verification failure for %s", dest)
 	}
 	return nil
 }
@@ -344,7 +343,7 @@ func main() {
 	flag.BoolVar(&args.version, "version", false, "Flag to output the version and exit")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.2.2\n")
+		fmt.Printf("v0.2.3\n")
 		return
 	}
 	err := args.Init()
