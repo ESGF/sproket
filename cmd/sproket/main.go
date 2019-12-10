@@ -288,12 +288,32 @@ func outputFields(args *config) {
 
 func outputDataNodes(args *config) {
 
+	var dataNodeOutput []string
+
+	// Ensure only unique files are output
+	args.search.Fields["replica"] = "false"
+	dataNodes := sproket.DataNodes(&args.search)
+	if len(dataNodes) == 0 {
+		fmt.Println("an original data node is required for download from any data nodes and no original data node was found")
+		return
+	}
+	dataNodeOutput = nil
+	for dataNode := range dataNodes {
+		dataNodeOutput = append(dataNodeOutput, dataNode)
+	}
+	sort.Strings(dataNodeOutput)
+	// Output info
+	fmt.Println("excluding replication:")
+	fmt.Println(args.search)
+	for _, dataNode := range dataNodeOutput {
+		fmt.Println(dataNode)
+	}
+
 	// Ensure all files are counted
 	args.search.Fields["replica"] = "*"
 
-	var dataNodeOutput []string
 	// Get data node counts and total count
-	dataNodes := sproket.DataNodes(&args.search)
+	dataNodes = sproket.DataNodes(&args.search)
 
 	for dataNode := range dataNodes {
 		dataNodeOutput = append(dataNodeOutput, dataNode)
@@ -306,22 +326,6 @@ func outputDataNodes(args *config) {
 		fmt.Println(dataNode)
 	}
 	fmt.Println()
-
-	// Ensure only unique files are output
-	args.search.Fields["replica"] = "false"
-	dataNodes = sproket.DataNodes(&args.search)
-
-	dataNodeOutput = nil
-	for dataNode := range dataNodes {
-		dataNodeOutput = append(dataNodeOutput, dataNode)
-	}
-	sort.Strings(dataNodeOutput)
-	// Output info
-	fmt.Println("excluding replication:")
-	fmt.Println(args.search)
-	for _, dataNode := range dataNodeOutput {
-		fmt.Println(dataNode)
-	}
 }
 
 func main() {
@@ -340,7 +344,7 @@ func main() {
 	flag.BoolVar(&args.version, "version", false, "Flag to output the version and exit")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.2.1\n")
+		fmt.Printf("v0.2.2\n")
 		return
 	}
 	err := args.Init()
