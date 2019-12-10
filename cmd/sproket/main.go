@@ -336,7 +336,7 @@ func main() {
 	flag.BoolVar(&args.noDownload, "no.download", false, "Flag to indicate no downloads should be performed")
 	flag.BoolVar(&args.verbose, "verbose", false, "Flag to indicate output should be verbose")
 	flag.BoolVar(&args.confirm, "y", false, "Flag to confirm larger downloads")
-	flag.BoolVar(&args.noVerify, "no.verify", false, "Flag to skip sha256 verification")
+	flag.BoolVar(&args.noVerify, "no.verify", false, "Flag to skip checksum verification")
 	flag.BoolVar(&args.fieldKeys, "field.keys", false, "Flag to output possible field keys. The outputted list may be incomplete for complicated reasons.")
 	flag.BoolVar(&args.displayDataNodes, "data.nodes", false, "Flag to output data nodes that serve the files that match the criteria")
 	flag.BoolVar(&args.count, "count", false, "Flag to only count number of files that would be attempted to be downloaded")
