@@ -1,30 +1,30 @@
 package sproket
 
 import (
+	"errors"
 	"io"
-	"log"
 	"net/http"
 	"os"
 )
 
 // Get retreives the the URL
-func Get(inURL string, dest string) {
+func Get(inURL string, dest string) error {
 	resp, err := http.Get(inURL)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 	defer resp.Body.Close()
-	if err != nil {
-		log.Fatal(err)
+	if resp.StatusCode != http.StatusOK {
+		return errors.New(resp.Status)
 	}
 	f, err := os.Create(dest)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer f.Close()
 
 	if _, err := io.Copy(f, resp.Body); err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }

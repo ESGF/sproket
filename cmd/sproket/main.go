@@ -127,7 +127,11 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 			}
 
 			// Perform download
-			sproket.Get(doc.HTTPURL, dest)
+			err := sproket.Get(doc.HTTPURL, dest)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
 
 			// Verify checksum, if available and desired
 			if !(args.noVerify) {
