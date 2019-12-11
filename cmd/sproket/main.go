@@ -311,6 +311,7 @@ func outputDataNodes(args *config) {
 	for _, dataNode := range dataNodeOutput {
 		fmt.Println(dataNode)
 	}
+	fmt.Println()
 
 	// Ensure all files are counted
 	args.search.Fields["replica"] = "*"
@@ -328,7 +329,6 @@ func outputDataNodes(args *config) {
 	for _, dataNode := range dataNodeOutput {
 		fmt.Println(dataNode)
 	}
-	fmt.Println()
 }
 
 func main() {
