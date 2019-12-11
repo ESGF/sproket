@@ -296,6 +296,8 @@ func outputDataNodes(args *config) {
 	// Ensure only unique files are output
 	args.search.Fields["replica"] = "false"
 	dataNodes := sproket.DataNodes(&args.search)
+	fmt.Println("excluding replication:")
+	fmt.Println(args.search)
 	if len(dataNodes) == 0 {
 		fmt.Println("an original data node is required for download from any data nodes and no original data node was found")
 		return
@@ -306,8 +308,6 @@ func outputDataNodes(args *config) {
 	}
 	sort.Strings(dataNodeOutput)
 	// Output info
-	fmt.Println("excluding replication:")
-	fmt.Println(args.search)
 	for _, dataNode := range dataNodeOutput {
 		fmt.Println(dataNode)
 	}
