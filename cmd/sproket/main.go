@@ -274,6 +274,10 @@ func outputFields(args *config) {
 
 	// Grab sample fields from a single search result
 	keys := sproket.SearchFields(&args.search)
+	if keys == nil {
+		fmt.Println("no records match the search criteria, unable to determine fields")
+		return
+	}
 	sort.Strings(keys)
 	fmt.Println("criteria: ")
 	fmt.Println(args.search)

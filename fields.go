@@ -34,6 +34,11 @@ func SearchFields(s *Search) []string {
 	var result fieldResTop
 	json.Unmarshal(body, &result)
 
+	// If no result was found
+	if len(result.Res.Docs) != 1 {
+		return nil
+	}
+
 	var fields []string
 	for key := range result.Res.Docs[0] {
 		fields = append(fields, key)
