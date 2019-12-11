@@ -92,7 +92,6 @@ func verify(dest string, remoteSum string, remoteSumType string) error {
 	}
 	res := fmt.Sprintf("%x", hash.Sum(nil))
 	if res != remoteSum {
-		fmt.Printf("%s != %s\n", res, remoteSum)
 		return fmt.Errorf("checksum verification failure for %s", dest)
 	}
 	return nil
@@ -115,9 +114,7 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 			// Check if present and correct
 			if _, err := os.Stat(dest); err == nil {
 				err := verify(dest, doc.GetSum(), doc.GetSumType())
-				if err != nil {
-					fmt.Println(err)
-				} else {
+				if err == nil {
 					if args.verbose {
 						fmt.Printf("%d: %s already present and verified, no download\n", id, dest)
 					}
