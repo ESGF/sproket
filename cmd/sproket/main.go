@@ -302,7 +302,6 @@ func outputDataNodes(args *config) {
 		fmt.Println("an original data node is required for download from any data nodes and no original data node was found")
 		return
 	}
-	dataNodeOutput = nil
 	for dataNode := range dataNodes {
 		dataNodeOutput = append(dataNodeOutput, dataNode)
 	}
@@ -318,7 +317,7 @@ func outputDataNodes(args *config) {
 
 	// Get data node counts and total count
 	dataNodes = sproket.DataNodes(&args.search)
-
+	dataNodeOutput = nil
 	for dataNode := range dataNodes {
 		dataNodeOutput = append(dataNodeOutput, dataNode)
 	}
