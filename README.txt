@@ -1,9 +1,7 @@
 Use -h for help.
 
 Config File Structure
-
 See configs/search.json as an example
-
     search_api: The entire URL used to access an ESGF search API. Required.
     data_node_priority: A list of strings that must match exactly data node names that should be preferred over other data nodes, from high priority to low priority. The entire result set will be returned using data nodes not present in this list, if needed. Use -data.nodes to find valid values for a given search. Wildcard and regular expressions, as discussed below, are not   supported for the values in this list.  Default [], no priority.
     fields:  Key/value pairs that used to select files to download. Default {}, no fields.
@@ -18,7 +16,7 @@ Note that each valueN above may include wildcards or be regular expressions. See
 Special Field Considerations
 
     retracted: This is hard coded to ”false”. User specified values will be ignored.
-    latest:  This is hard coded to ”true”. User specified values will be ignored. Note this may conflict with any version specifications.
+    latest:  This is hard coded to ”true”. User specified values will be ignored. Note this may conflict with any version specifications, including any ID's that may contain versions.
     replica: This is changed at various points in sproket to ensure users receive one, and only one, copy of each file in a result set. User specified values will be ignored.
     data_node: This is hard coded to ”*”. User specified values will be ignored. See the data_node_priority parameter above for data node control.
 
