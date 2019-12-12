@@ -39,27 +39,27 @@ Note that this search will be applied to the files collection, but don’t worry
 
 Sample Commands
 
-# Download according to search.json
-./sproket -config search.json
+    # Download according to search.json
+    ./sproket -config search.json
 
-# "--" == "-", so --config works just as well as -config
+    # "--" == "-", so --config works just as well as -config
 
-# Helpful things to do before actually downloading
-#  Check help
-sproket -h
-#  Check version
-sproket -version
-#  Count files
-sproket -config search.json -count
-#  Dry-run with verbose output
-sproket -config search.json -no.download -verbose
+    # Helpful things to do before actually downloading
+    #  Check help
+    sproket -h
+    #  Check version
+    sproket -version
+    #  Count files
+    sproket -config search.json -count
+    #  Dry-run with verbose output
+    sproket -config search.json -no.download -verbose
 
-# Helpful commands for refining search.json
-#  Check valid field keys that can be used in the "fields" option
-sproket -config search.json -field.keys
-#  Check data nodes that can serve the result set
-sproket -config search.json -data.nodes
+    # Helpful commands for refining search.json
+    #  Check valid field keys that can be used in the "fields" option
+    sproket -config search.json -field.keys
+    #  Check data nodes that can serve the result set
+    sproket -config search.json -data.nodes
 
 
-# If there is no time to waste
-sproket -config search.json -no.verify -p 32
+    # If there is no time to waste
+    sproket -config search.json -no.verify -p 32
