@@ -2,6 +2,7 @@ Use -h for help.
 
 Config File Structure
 See configs/search.json as an example
+
     search_api: The entire URL used to access an ESGF search API. Required.
     data_node_priority: A list of strings that must match exactly data node names that should be preferred over other data nodes, from high priority to low priority. The entire result set will be returned using data nodes not present in this list, if needed. Use -data.nodes to find valid values for a given search. Wildcard and regular expressions, as discussed below, are not   supported for the values in this list.  Default [], no priority.
     fields:  Key/value pairs that used to select files to download. Default {}, no fields.
@@ -27,10 +28,12 @@ A field key/value match can be negated by prefixing the field key with a dash li
 Regex vs Wildcard
 
 It is possible to specify regular expressions for a value in the fields key/value pairs. This requires wrapping the expression like so /regex/ as well as ensuring relevant characters are properly escaped.
-”variable_id”: ”/ps|mr(.*)/”
+
+    ”variable_id”: ”/ps|mr(.*)/”
 
 Wildcards are a little different than regular expressions. The wildcards available are ? and *, which match 0 to 1 and 0 to many of any characters, respectively. These do not require the wrapping in backslashes, for example, combining with negation to avoid a whole class of experiments:
-”-experiment_id”: “*a4SST*”
+
+    ”-experiment_id”: “*a4SST*”
 
 Files Collection
 
