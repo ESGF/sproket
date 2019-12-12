@@ -11,7 +11,9 @@ Logic
 
 Logically, the key/value pairs within a given fields object are ANDed together. Users may combine arbitrary AND or OR conditions with appropriate parentheses within a single field.
 For example:
+
     ”field_name”: “value1 OR (value2 AND value3)”
+
 Note that each valueN above may include wildcards or be regular expressions. See Regex vs Wildcard below.
 
 Special Field Considerations
