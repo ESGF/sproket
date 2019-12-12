@@ -1,13 +1,13 @@
 Use -h for help.
 
-Config File Structure
+## Config File Structure
 See configs/search.json as an example
 
     search_api: The entire URL used to access an ESGF search API. Required.
     data_node_priority: A list of strings that must match exactly data node names that should be preferred over other data nodes, from high priority to low priority. The entire result set will be returned using data nodes not present in this list, if needed. Use -data.nodes to find valid values for a given search. Wildcard and regular expressions, as discussed below, are not   supported for the values in this list.  Default [], no priority.
     fields:  Key/value pairs that used to select files to download. Default {}, no fields.
 
-Logic
+## Logic
 
 Logically, the key/value pairs within a given fields object are ANDed together. Users may combine arbitrary AND or OR conditions with appropriate parentheses within a single field.
 For example:
@@ -16,18 +16,18 @@ For example:
 
 Note that each valueN above may include wildcards or be regular expressions. See Regex vs Wildcard below.
 
-Special Field Considerations
+## Special Field Considerations
 
     retracted: This is hard coded to ”false”. User specified values will be ignored.
     latest:  This is hard coded to ”true”. User specified values will be ignored. Note this may conflict with any version specifications, including any ID's that may contain versions.
     replica: This is changed at various points in sproket to ensure users receive one, and only one, copy of each file in a result set. User specified values will be ignored.
     data_node: This is hard coded to ”*”. User specified values will be ignored. See the data_node_priority parameter above for data node control.
 
-Negation
+## Negation
 
 A field key/value match can be negated by prefixing the field key with a dash like so, ”-project”: “CMIP6”. Doing this to any fields in the Special Field Considerations section will result in undefined behavior.
 
-Regex vs Wildcard
+## Regex vs Wildcard
 
 It is possible to specify regular expressions for a value in the fields key/value pairs. This requires wrapping the expression like so /regex/ as well as ensuring relevant characters are properly escaped.
 
@@ -37,12 +37,12 @@ Wildcards are a little different than regular expressions. The wildcards availab
 
     ”-experiment_id”: “*a4SST*”
 
-Files Collection
+## Files Collection
 
 Note that this search will be applied to the files collection, but don’t worry, it contains the same attributes as the datasets collection. To access a specific data set the user will need to specify a dataset_id rather than simply id.
 
 
-Sample Commands
+##Sample Commands
 
     # Download according to search.json
     ./sproket -config search.json
