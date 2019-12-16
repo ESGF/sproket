@@ -292,6 +292,12 @@ func outputFields(args *config) {
 
 func outputDataNodes(args *config) {
 
+	_, n := sproket.SearchURLs(&args.search, 0, 0)
+	if n == 0 {
+		fmt.Println("no records match search criteria")
+		return
+	}
+
 	var dataNodeOutput []string
 
 	// Ensure only unique files are output
