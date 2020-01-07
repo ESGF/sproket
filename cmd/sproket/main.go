@@ -21,6 +21,7 @@ type config struct {
 	outDir           string
 	parallel         int
 	noDownload       bool
+	urlsOnly         bool
 	verbose          bool
 	confirm          bool
 	count            bool
@@ -103,7 +104,9 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 		if args.verbose {
 			fmt.Printf("%d: download %s\n", id, doc.HTTPURL)
 		}
-		if args.noDownload {
+		if args.urlsOnly {
+			fmt.Println(doc.HTTPURL)
+		} else if args.noDownload {
 			if args.verbose {
 				fmt.Printf("%d: no download\n", id)
 			}
@@ -167,18 +170,20 @@ func getBySearch(search sproket.Search, args *config) {
 		}
 	}
 
-	// Count original files, only files with replica: false entries present in the index will be downloaded
+	// Count original files, only files with "replica: false" entries present in the index will be downloaded
 	search.Fields["replica"] = "false"
 	if args.verbose {
 		fmt.Println(search)
 	}
 	_, n := sproket.SearchURLs(&search, 0, 0)
-	fmt.Printf("found %d files for download\n", n)
+	if !(args.urlsOnly) {
+		fmt.Printf("found %d files for download\n", n)
+	}
 	if args.count || n == 0 {
 		return
 	}
 	if !(args.confirm) && n > 100 {
-		fmt.Println("too many files (>100): confirm larger download by specifying the -y option or refine search criteria")
+		fmt.Printf("too many files (%d > 100): confirm larger download by specifying the -y option or refine search criteria\n", n)
 		return
 	}
 
@@ -263,8 +268,10 @@ func getBySearch(search sproket.Search, args *config) {
 				}
 			}
 		}
-		fmt.Printf("%d downloads submitted total\n", jobsSubmitted)
-		fmt.Printf("%d preferred downloads submitted\n", prefJobsSubmitted)
+		if args.verbose {
+			fmt.Printf("%d downloads submitted total\n", jobsSubmitted)
+			fmt.Printf("%d preferred downloads submitted\n", prefJobsSubmitted)
+		}
 	}
 	close(docChan)
 	waiter.Wait()
@@ -351,9 +358,10 @@ func main() {
 	flag.BoolVar(&args.displayDataNodes, "data.nodes", false, "Flag to output data nodes that serve the files that match the criteria")
 	flag.BoolVar(&args.count, "count", false, "Flag to only count number of files that would be attempted to be downloaded")
 	flag.BoolVar(&args.version, "version", false, "Flag to output the version and exit")
+	flag.BoolVar(&args.urlsOnly, "urls.only", false, "Flag to only output to stdout the HTTP URLs that would be used")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.2.3\n")
+		fmt.Printf("v0.2.4\n")
 		return
 	}
 	err := args.Init()
