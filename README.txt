@@ -1,6 +1,6 @@
 Use -h for help.
 
-Files are first downloaded to a "[filename].part" and moved to simply "[filename]" once it is completed, and verified (if applicable).
+Files are first downloaded to a "[filename].part" and moved to simply "[filename]" once the download is completed, and verified (if applicable).
 
 ###  Config File Structure
 See configs/search.json as an example
