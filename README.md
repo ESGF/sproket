@@ -2,9 +2,15 @@
 
 This tools allows the user to access unrestricted ESGF data simply by specifying search criteria.
 
+The entire tool lives in a single, executable, binary file.
+Get the latest release from [the release page](https://github.com/ESGF/sproket/releases).
+Be sure to get correct operating system version (`darwin` is Mac).
+
+
 In the default mode, sproket will attempt to perform downloads of the entire matching result set.
 
 Files are first downloaded to a "[filename].part" file and moved to simply "[filename]" once the download is completed and verified (if applicable).
+
 
 Use -h for help.
 
