@@ -1,6 +1,12 @@
-Use -h for help.
+## sproket
+
+This tools allows the user to access ESGF data simply by specifying search criteria. 
+
+In the default mode, sproket will attempt to perform downloads of the entire matching result set.
 
 Files are first downloaded to a "[filename].part" and moved to simply "[filename]" once the download is completed, and verified (if applicable).
+
+Use -h for help.
 
 ###  Config File Structure
 See configs/search.json as an example
