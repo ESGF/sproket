@@ -4,7 +4,7 @@ This tools allows the user to access unrestricted ESGF data simply by specifying
 
 In the default mode, sproket will attempt to perform downloads of the entire matching result set.
 
-Files are first downloaded to a "[filename].part" and moved to simply "[filename]" once the download is completed, and verified (if applicable).
+Files are first downloaded to a "[filename].part" file and moved to simply "[filename]" once the download is completed and verified (if applicable).
 
 A configuration file, using JSON format, is used to specify the required information and search criteria. Here is an example of the contents of such a file.
 
