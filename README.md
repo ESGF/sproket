@@ -6,14 +6,29 @@ In the default mode, sproket will attempt to perform downloads of the entire mat
 
 Files are first downloaded to a "[filename].part" and moved to simply "[filename]" once the download is completed, and verified (if applicable).
 
+A configuration file, using JSON format, is used to specify the required information and search criteria. Here is an example of the contents of such a file.
+
+    {
+        "search_api": "https://esgf-node.llnl.gov/esg-search/search/",
+        "data_node_priority": ["aims3.llnl.gov", "esgf-data1.llnl.gov"],
+        "fields": {
+            "variable_id": "ps",
+            "experiment_id": "historical",
+            "source_id": "FGOALS-g3",
+            "table_id": "Amon",
+            "variant_label": "r1i1p1f1",
+            "project": "CMIP6"
+        }
+    }
+
 Use -h for help.
 
 ###  Config File Structure
 See configs/search.json as an example
 
-    search_api: The entire URL used to access an ESGF search API. Required.
-    data_node_priority: A list of strings that must match exactly data node names that should be preferred over other data nodes, from high priority to low priority. The entire result set will be returned using data nodes not present in this list, if needed. Use -data.nodes to find valid values for a given search. Wildcard and regular expressions, as discussed below, are not   supported for the values in this list.  Default [], no priority.
-    fields:  Key/value pairs that used to select files to download. Default {}, no fields.
+* `search_api`: The entire URL used to access an ESGF search API. Required.
+* `data_node_priority`: A list of strings that must match exactly data node names that should be preferred over other data nodes, from high priority to low priority. The entire result set will be returned using data nodes not present in this list, if needed. Use `-data.nodes` to find valid values for a given search. Wildcard and regular expressions, as discussed below, are not   supported for the values in this list.  Default `[]`, no priority.
+* `fields`:  Key/value pairs that used to select files to download. Default `{}`, no field requirements.
 
 ###  Logic
 
@@ -25,10 +40,10 @@ For example:
 Note that each valueN above may include wildcards or be regular expressions. See Regex vs Wildcard below.
 
 ###  Special Field Considerations
-    retracted: This is hard coded to ”false”. User specified values will be ignored.
-    latest:  This is hard coded to ”true”. User specified values will be ignored. Note this may conflict with any version specifications, including any ID's that may contain versions.
-    replica: This is changed at various points in sproket to ensure users receive one, and only one, copy of each file in a result set. User specified values will be ignored.
-    data_node: This is hard coded to ”*”. User specified values will be ignored. See the data_node_priority parameter above for data node control.
+* `retracted`: This is hard coded to `”false”`. User specified values will be ignored.
+* `latest`:  This is hard coded to `”true”`. User specified values will be ignored. Note this may conflict with any `version` specifications, including any ID's that may contain versions.
+* `replica`: This is changed at various points in sproket to ensure users receive one, and only one, copy of each file in a result set. User specified values will be ignored.
+* `data_node`: This is hard coded to `”*”`. User specified values will be ignored. See the data_node_priority parameter above for data node control.
 
 ###  Negation
 A field key/value match can be negated by prefixing the field key with a dash like so, ”-project”: “CMIP6”. Doing this to any fields in the Special Field Considerations section will result in undefined behavior.
