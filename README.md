@@ -6,6 +6,40 @@ In the default mode, sproket will attempt to perform downloads of the entire mat
 
 Files are first downloaded to a "[filename].part" file and moved to simply "[filename]" once the download is completed and verified (if applicable).
 
+Use -h for help.
+
+## Sample Commands
+
+    # Download according to search.json
+    ./sproket -config search.json
+
+    # "--" == "-", so --config works just as well as -config
+
+    # Helpful things to do before actually downloading
+    #  Check help
+    sproket -h
+    #  Check version
+    sproket -version
+    #  Count files
+    sproket -config search.json -count
+    #  Dry-run with verbose output
+    sproket -config search.json -no.download -verbose
+
+    # Helpful commands for refining search.json
+    #  Check valid field keys that can be used in the "fields" option
+    sproket -config search.json -field.keys
+    #  Check data nodes that can serve the result set
+    sproket -config search.json -data.nodes
+
+    # A list of HTTP URLs can be recorded for use by a different HTTP Client, 
+    #  wget or curl for example
+    sproket -config search.json -urls.only > urls_list.txt
+
+    # If there is no time to waste
+    sproket -config search.json -no.verify -p 32
+
+## Configuration
+
 A configuration file, using JSON format, is used to specify the required information and search criteria. Here is an example of the contents of such a file.
 
     {
@@ -20,8 +54,6 @@ A configuration file, using JSON format, is used to specify the required informa
             "project": "CMIP6"
         }
     }
-
-Use -h for help.
 
 ###  Config File Structure
 See configs/search.json as an example
@@ -60,34 +92,3 @@ Wildcards are a little different than regular expressions. The wildcards availab
 ###  Files Collection
 
 Note that this search will be applied to the files collection, but don’t worry, it contains the same attributes as the datasets collection. To access a specific data set the user will need to specify a dataset_id rather than simply id.
-
-
-### Sample Commands
-
-    # Download according to search.json
-    ./sproket -config search.json
-
-    # "--" == "-", so --config works just as well as -config
-
-    # Helpful things to do before actually downloading
-    #  Check help
-    sproket -h
-    #  Check version
-    sproket -version
-    #  Count files
-    sproket -config search.json -count
-    #  Dry-run with verbose output
-    sproket -config search.json -no.download -verbose
-
-    # Helpful commands for refining search.json
-    #  Check valid field keys that can be used in the "fields" option
-    sproket -config search.json -field.keys
-    #  Check data nodes that can serve the result set
-    sproket -config search.json -data.nodes
-
-    # A list of HTTP URLs can be recorded for use by a different HTTP Client, 
-    #  wget or curl for example
-    sproket -config search.json -urls.only > urls_list.txt
-
-    # If there is no time to waste
-    sproket -config search.json -no.verify -p 32
