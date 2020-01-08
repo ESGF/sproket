@@ -1,6 +1,6 @@
 ## sproket
 
-This tools allows the user to access unrestricted ESGF data simply by specifying search criteria. 
+This tools allows the user to access unrestricted ESGF data simply by specifying search criteria.
 
 In the default mode, sproket will attempt to perform downloads of the entire matching result set.
 
@@ -40,7 +40,7 @@ Use -h for help.
 
 ## Configuration
 
-A configuration file, using JSON, is used to specify the required information and search criteria. Here is an example of the contents of such a file.
+A configuration file, using JSON, is used to specify the required information and search criteria. Data collections can be "shared" with colleagues by simply sharing these config files. Here is an example of the contents of such a file.
 
     {
         "search_api": "https://esgf-node.llnl.gov/esg-search/search/",
