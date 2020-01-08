@@ -40,7 +40,7 @@ Use -h for help.
 
 ## Configuration
 
-A configuration file, using JSON format, is used to specify the required information and search criteria. Here is an example of the contents of such a file.
+A configuration file, using JSON, is used to specify the required information and search criteria. Here is an example of the contents of such a file.
 
     {
         "search_api": "https://esgf-node.llnl.gov/esg-search/search/",
