@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sort"
 	"sproket"
 	"strings"
@@ -112,8 +113,8 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 			}
 		} else {
 
-			dest := fmt.Sprintf("%s/%s.part", args.outDir, doc.InstanceID)
-			finalDest := fmt.Sprintf("%s/%s", args.outDir, doc.InstanceID)
+			dest := filepath.Join(args.outDir, fmt.Sprintf("%s.part", doc.InstanceID))
+			finalDest := filepath.Join(args.outDir, doc.InstanceID)
 
 			// Check if present and correct
 			if _, err := os.Stat(finalDest); err == nil {
@@ -372,7 +373,7 @@ func main() {
 	flag.BoolVar(&args.urlsOnly, "urls.only", false, "Flag to only output to stdout the HTTP URLs that would be used")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.2.5\n")
+		fmt.Printf("v0.2.6\n")
 		return
 	}
 	err := args.Init()
