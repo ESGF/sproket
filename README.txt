@@ -62,6 +62,9 @@ Note that this search will be applied to the files collection, but don’t worry
     #  Check data nodes that can serve the result set
     sproket -config search.json -data.nodes
 
+    # A list of HTTP URLs can be recorded for use by a different HTTP Client, 
+    #  wget or curl for example
+    sproket -config search.json -urls.only > urls_list.txt
 
     # If there is no time to waste
     sproket -config search.json -no.verify -p 32
