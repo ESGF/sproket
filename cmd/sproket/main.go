@@ -112,14 +112,15 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 			}
 		} else {
 
-			dest := fmt.Sprintf("%s/%s", args.outDir, doc.InstanceID)
+			dest := fmt.Sprintf("%s/%s.part", args.outDir, doc.InstanceID)
+			finalDest := fmt.Sprintf("%s/%s", args.outDir, doc.InstanceID)
 
 			// Check if present and correct
-			if _, err := os.Stat(dest); err == nil {
-				err := verify(dest, doc.GetSum(), doc.GetSumType())
+			if _, err := os.Stat(finalDest); err == nil {
+				err := verify(finalDest, doc.GetSum(), doc.GetSumType())
 				if err == nil {
 					if args.verbose {
-						fmt.Printf("%d: %s already present and verified, no download\n", id, dest)
+						fmt.Printf("%d: %s already present and verified, no download\n", id, finalDest)
 					}
 					// Go to next download if everything checks out
 					continue
@@ -138,9 +139,19 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 				err := verify(dest, doc.GetSum(), doc.GetSumType())
 				if err != nil {
 					fmt.Println(err)
+					continue
 				} else if args.verbose {
 					fmt.Printf("%d: verified %s\n", id, dest)
 				}
+			}
+
+			// Rename the file to indicate it is verified
+			err = os.Rename(dest, finalDest)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			} else if args.verbose {
+				fmt.Printf("%d: removed postfix %s\n", id, finalDest)
 			}
 		}
 	}
@@ -361,7 +372,7 @@ func main() {
 	flag.BoolVar(&args.urlsOnly, "urls.only", false, "Flag to only output to stdout the HTTP URLs that would be used")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.2.4\n")
+		fmt.Printf("v0.2.5\n")
 		return
 	}
 	err := args.Init()
