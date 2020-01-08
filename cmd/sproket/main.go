@@ -360,7 +360,7 @@ func main() {
 
 	var args config
 	flag.StringVar(&args.conf, "config", "", "Path to config file")
-	flag.StringVar(&args.outDir, "out.dir", "./", "Path to directory to put downloads in")
+	flag.StringVar(&args.outDir, "out.dir", ".", "Path to directory to put downloads in")
 	flag.IntVar(&args.parallel, "p", 4, "Max number of concurrent downloads")
 	flag.BoolVar(&args.noDownload, "no.download", false, "Flag to indicate no downloads should be performed")
 	flag.BoolVar(&args.verbose, "verbose", false, "Flag to indicate output should be verbose")
