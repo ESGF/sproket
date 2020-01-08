@@ -1,6 +1,6 @@
 ## sproket
 
-This tools allows the user to access ESGF data simply by specifying search criteria. 
+This tools allows the user to access unrestricted ESGF data simply by specifying search criteria. 
 
 In the default mode, sproket will attempt to perform downloads of the entire matching result set.
 
