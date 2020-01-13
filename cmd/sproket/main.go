@@ -366,12 +366,14 @@ func outputValuesFor(args *config) {
 	for _, substring := range blacklistSubstrings {
 		if strings.Contains(args.valuesFor, substring) {
 			fmt.Printf("the values for field may not contain '%s'\n", substring)
+			return
 		}
 	}
 	blacklist := []string{"_timestamp", "timestamp", "id", "dataset_id", "master_id", "version", "citation_url", "data_specs_version", "datetime_start", "datetime_stop", "east_degrees", "west_degrees", "north_degrees", "geo", "height_bottom", "height_top", "instance_id", "number_of_aggregations", "number_of_files", "pid", "size", "south_degrees", "url", "title", "xlink", "_version_"}
 	for _, field := range blacklist {
 		if field == args.valuesFor {
 			fmt.Printf("'%s' is not an allowed field to search for values for\n", args.valuesFor)
+			return
 		}
 	}
 	// Ensure only unique files are output
