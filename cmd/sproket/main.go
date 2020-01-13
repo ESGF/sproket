@@ -20,6 +20,7 @@ import (
 type config struct {
 	conf             string
 	outDir           string
+	valuesFor        string
 	parallel         int
 	noDownload       bool
 	urlsOnly         bool
@@ -165,7 +166,7 @@ func getBySearch(search sproket.Search, args *config) {
 	if args.softDataNode {
 		// Check for any matching replica data nodes in data node priority list
 		search.Fields["replica"] = "true"
-		dataNodes := sproket.DataNodes(&search)
+		dataNodes := sproket.Facet(&search, "data_node")
 		for dataNode := range dataNodes {
 			for _, preferedDataNode := range search.DataNodePriority {
 				if dataNode == preferedDataNode {
@@ -321,9 +322,11 @@ func outputDataNodes(args *config) {
 
 	// Ensure only unique files are output
 	args.search.Fields["replica"] = "false"
-	dataNodes := sproket.DataNodes(&args.search)
+	dataNodes := sproket.Facet(&args.search, "data_node")
 	fmt.Println("excluding replication:")
-	fmt.Println(args.search)
+	if args.verbose {
+		fmt.Println(args.search)
+	}
 	if len(dataNodes) == 0 {
 		fmt.Println("an original data node is required for download from any data nodes and no original data node was found")
 		return
@@ -342,7 +345,7 @@ func outputDataNodes(args *config) {
 	args.search.Fields["replica"] = "*"
 
 	// Get data node counts and total count
-	dataNodes = sproket.DataNodes(&args.search)
+	dataNodes = sproket.Facet(&args.search, "data_node")
 	dataNodeOutput = nil
 	for dataNode := range dataNodes {
 		dataNodeOutput = append(dataNodeOutput, dataNode)
@@ -350,9 +353,44 @@ func outputDataNodes(args *config) {
 	sort.Strings(dataNodeOutput)
 	// Output info
 	fmt.Println("including replication:")
-	fmt.Println(args.search)
+	if args.verbose {
+		fmt.Println(args.search)
+	}
 	for _, dataNode := range dataNodeOutput {
 		fmt.Println(dataNode)
+	}
+}
+
+func outputValuesFor(args *config) {
+	blacklistSubstrings := []string{"*"}
+	for _, substring := range blacklistSubstrings {
+		if strings.Contains(args.valuesFor, substring) {
+			fmt.Printf("the values for field may not contain '%s'\n", substring)
+		}
+	}
+	blacklist := []string{"_timestamp", "timestamp", "id", "dataset_id", "master_id", "version", "citation_url", "data_specs_version", "datetime_start", "datetime_stop", "east_degrees", "west_degrees", "north_degrees", "geo", "height_bottom", "height_top", "instance_id", "number_of_aggregations", "number_of_files", "pid", "size", "south_degrees", "url", "title", "xlink", "_version_"}
+	for _, field := range blacklist {
+		if field == args.valuesFor {
+			fmt.Printf("'%s' is not an allowed field to search for values for\n", args.valuesFor)
+		}
+	}
+	_, n := sproket.SearchURLs(&args.search, 0, 0)
+	if n == 0 {
+		fmt.Println("no records match search criteria")
+		return
+	}
+
+	var values []string
+	// Ensure only unique files are output
+	args.search.Fields["replica"] = "false"
+	valueCounts := sproket.Facet(&args.search, args.valuesFor)
+	for value := range valueCounts {
+		values = append(values, value)
+	}
+	sort.Strings(values)
+	// Output info
+	for _, value := range values {
+		fmt.Println(value)
 	}
 }
 
@@ -361,6 +399,7 @@ func main() {
 	var args config
 	flag.StringVar(&args.conf, "config", "", "Path to config file")
 	flag.StringVar(&args.outDir, "out.dir", ".", "Path to directory to put downloads in")
+	flag.StringVar(&args.valuesFor, "values.for", "", "Display the available values for a given field, within the result set of the provided search criteria")
 	flag.IntVar(&args.parallel, "p", 4, "Max number of concurrent downloads")
 	flag.BoolVar(&args.noDownload, "no.download", false, "Flag to indicate no downloads should be performed")
 	flag.BoolVar(&args.verbose, "verbose", false, "Flag to indicate output should be verbose")
@@ -383,6 +422,8 @@ func main() {
 	}
 	if args.displayDataNodes {
 		outputDataNodes(&args)
+	} else if args.valuesFor != "" {
+		outputValuesFor(&args)
 	} else if args.fieldKeys {
 		outputFields(&args)
 	} else if len(args.search.Fields) > 0 {
