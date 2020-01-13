@@ -374,6 +374,8 @@ func outputValuesFor(args *config) {
 			fmt.Printf("'%s' is not an allowed field to search for values for\n", args.valuesFor)
 		}
 	}
+	// Ensure only unique files are output
+	args.search.Fields["replica"] = "false"
 	_, n := sproket.SearchURLs(&args.search, 0, 0)
 	if n == 0 {
 		fmt.Println("no records match search criteria")
@@ -381,8 +383,6 @@ func outputValuesFor(args *config) {
 	}
 
 	var values []string
-	// Ensure only unique files are output
-	args.search.Fields["replica"] = "false"
 	valueCounts := sproket.Facet(&args.search, args.valuesFor)
 	for value := range valueCounts {
 		values = append(values, value)
