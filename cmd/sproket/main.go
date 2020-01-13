@@ -384,6 +384,10 @@ func outputValuesFor(args *config) {
 
 	var values []string
 	valueCounts := sproket.Facet(&args.search, args.valuesFor)
+	if len(valueCounts) == 0 {
+		fmt.Printf("no values could be found for the provided field: '%s'\n", args.valuesFor)
+		return
+	}
 	for value := range valueCounts {
 		values = append(values, value)
 	}
