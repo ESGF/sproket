@@ -412,7 +412,7 @@ func main() {
 	flag.BoolVar(&args.urlsOnly, "urls.only", false, "Flag to only output to stdout the HTTP URLs that would be used")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.2.6\n")
+		fmt.Printf("v0.2.7\n")
 		return
 	}
 	err := args.Init()

@@ -34,7 +34,10 @@ Use -h for help.
     # Helpful commands for refining search.json
     #  Check valid field keys that can be used in the "fields" option
     sproket -config search.json -field.keys
-    #  Check data nodes that can serve the result set
+    #  Then check for valid values for any of the fields output from the above command
+    sproket -config search.json -values.for experiment_id
+
+    #  Check data nodes that can serve the result set, useful for specifying 'data_node_priority'
     sproket -config search.json -data.nodes
 
     # A list of HTTP URLs can be recorded for use by a different HTTP Client, 
