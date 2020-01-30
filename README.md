@@ -100,4 +100,4 @@ Wildcards are a little different than regular expressions. The wildcards availab
 
 ###  Files Collection
 
-Note that this search will be applied to the files collection, but don’t worry, it contains the same attributes as the datasets collection. To access a specific data set the user will need to specify a dataset_id rather than simply id.
+Note that this search will be applied to the ESGF files collection. Each file record in this collection has a set of fields that indicate the data that the file itself holds. What these fields are and what they mean may differ from project to project in ESGF. For example, some projects may put more than one variable in a single file, while others may restrict files to a single variable. Some projects may call the field `variable` and others may call it `variable_id`. The `-field.keys` is meant to help with this. It can be helpful to specify simply the `project` field in the search configuration then use `-field.keys` to find valid fields to use for that project.
