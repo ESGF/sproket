@@ -67,7 +67,7 @@ A configuration file, using JSON, is used to specify the required information an
 ###  Config File Structure
 See configs/search.json as an example
 
-* `search_api`: The entire URL used to access an ESGF search API. Required.
+* `search_api`: The entire URL used to access an ESGF search API. This usually does not need to be changed from what is specified in the above example. It may be preferred to use a more local ESGF index node, in which case `esgf-node.llnl.gov` above would simply be replaced with the hostname of the more local ESGF index node. Required.
 * `data_node_priority`: A list of strings that must match exactly data node names that should be preferred over other data nodes, from high priority to low priority. The entire result set will be returned using data nodes not present in this list, if needed. Use `-data.nodes` to find valid values for a given search. Wildcard and regular expressions, as discussed below, are not   supported for the values in this list.  Default `[]`, no priority.
 * `fields`:  Key/value pairs that used to select files to download. Default `{}`, no field requirements.
 
