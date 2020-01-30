@@ -17,6 +17,12 @@ import (
 	"sync"
 )
 
+// VERSION is the current version of sproket
+var VERSION = "v0.2.9"
+
+// AGENT sets the User-Agent field in the HTTP requests
+var AGENT = fmt.Sprintf("sproket/%s", VERSION)
+
 type config struct {
 	conf             string
 	outDir           string
@@ -130,7 +136,7 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 			}
 
 			// Perform download
-			err := sproket.Get(doc.HTTPURL, dest)
+			err := sproket.Get(doc.HTTPURL, dest, AGENT)
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -418,7 +424,7 @@ func main() {
 	flag.BoolVar(&args.urlsOnly, "urls.only", false, "Flag to only output to stdout the HTTP URLs that would be used")
 	flag.Parse()
 	if args.version {
-		fmt.Printf("v0.2.8\n")
+		fmt.Println(VERSION)
 		return
 	}
 	err := args.Init()

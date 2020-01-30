@@ -1,3 +1,5 @@
 data/
 build/sproket*
 .vscode/
+configs/
+!configs/search.json

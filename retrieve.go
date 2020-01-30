@@ -7,9 +7,17 @@ import (
 	"os"
 )
 
-// Get retreives the the URL
-func Get(inURL string, dest string) error {
-	resp, err := http.Get(inURL)
+// Get sets the User-Agent header, performs the GET and writes to the specified dest file
+func Get(inURL string, dest string, agent string) error {
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", inURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", agent)
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
