@@ -126,11 +126,12 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 			// Check if present and correct
 			if _, err := os.Stat(finalDest); err == nil {
 				err := verify(finalDest, doc.GetSum(), doc.GetSumType())
+
+				// Go to next download if everything checks out
 				if err == nil {
 					if args.verbose {
 						fmt.Printf("%d: %s already present and verified, no download\n", id, finalDest)
 					}
-					// Go to next download if everything checks out
 					continue
 				}
 			}
@@ -138,7 +139,7 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 			// Perform download
 			err := sproket.Get(doc.HTTPURL, dest, AGENT)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Printf("%d: an error occurred during download of %s:\n\t%s\n", id, doc.HTTPURL, err)
 				continue
 			}
 
