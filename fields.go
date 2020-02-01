@@ -13,9 +13,9 @@ type fieldResMid struct {
 	Docs []map[string]interface{} `json:"docs"`
 }
 
-// SearchFields returns a slice of available fields for a search
-func SearchFields(s *Search) []string {
-	q := buildQ(s)
+// GetFields returns a slice of available fields for a search
+func (s *Search) GetFields() []string {
+	q := s.buildQ()
 	params := map[string]string{
 		"query":  q,
 		"type":   "File",
@@ -24,7 +24,7 @@ func SearchFields(s *Search) []string {
 		"limit":  "1",
 	}
 
-	body, err := performSearch(s.API, params)
+	body, err := s.performSearch(params)
 	if err != nil {
 		fmt.Println(err)
 		return nil

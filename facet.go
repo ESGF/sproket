@@ -14,8 +14,8 @@ type facetCounts struct {
 }
 
 // Facet returns the values available for the provided field and the number of files that each value has
-func Facet(s *Search, field string) map[string]int {
-	q := buildQ(s)
+func (s *Search) Facet(field string) map[string]int {
+	q := s.buildQ()
 	params := map[string]string{
 		"query":  q,
 		"type":   "File",
@@ -24,7 +24,7 @@ func Facet(s *Search, field string) map[string]int {
 		"facets": field,
 	}
 
-	body, err := performSearch(s.API, params)
+	body, err := s.performSearch(params)
 	if err != nil {
 		fmt.Println(err)
 		return nil

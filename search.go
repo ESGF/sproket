@@ -1,10 +1,9 @@
 package sproket
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"net/url"
 	"strings"
 )
@@ -47,8 +46,8 @@ func (d *Doc) GetSumType() string {
 }
 
 // SearchURLs returns a slice of up to "limit" download URLs
-func SearchURLs(s *Search, skip int, limit int) ([]Doc, int) {
-	q := buildQ(s)
+func (s *Search) SearchURLs(skip int, limit int) ([]Doc, int) {
+	q := s.buildQ()
 	params := map[string]string{
 		"query":  q,
 		"type":   "File",
@@ -58,7 +57,7 @@ func SearchURLs(s *Search, skip int, limit int) ([]Doc, int) {
 		"offset": fmt.Sprintf("%d", skip),
 	}
 
-	body, err := performSearch(s.API, params)
+	body, err := s.performSearch(params)
 	if err != nil {
 		fmt.Println(err)
 		return nil, 0
@@ -86,37 +85,23 @@ func SearchURLs(s *Search, skip int, limit int) ([]Doc, int) {
 	return docs, remaining
 }
 
-func performSearch(api string, params map[string]string) ([]byte, error) {
+func (s *Search) performSearch(params map[string]string) ([]byte, error) {
+
+	// Build the search path
+	values := url.Values{}
+	for key, value := range params {
+		values.Add(key, value)
+	}
+	query := values.Encode()
+	path := fmt.Sprintf("%s?%s", s.API, query)
 
 	// Perform query
-	resp, err := http.Get(Path(api, params))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return body, nil
+	buff := bytes.Buffer{}
+	err := s.Get(path, &buff)
+	return buff.Bytes(), err
 }
 
-// Path builds an http path from host and params
-func Path(host string, params map[string]string) string {
-
-	var httpQuery []string
-	for key, value := range params {
-		param := fmt.Sprintf("%s=%s", key, url.QueryEscape(value))
-		httpQuery = append(httpQuery, param)
-	}
-	query := strings.Join(httpQuery, "&")
-	out := fmt.Sprintf("%s?%s", host, query)
-	return out
-}
-
-func buildQ(s *Search) string {
+func (s *Search) buildQ() string {
 	if len(s.Fields) == 0 {
 		return "*:*"
 	}

@@ -9,6 +9,7 @@ import (
 	"hash"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,7 +19,7 @@ import (
 )
 
 // VERSION is the current version of sproket
-var VERSION = "v0.2.9"
+var VERSION = "v0.2.10"
 
 // AGENT sets the User-Agent field in the HTTP requests
 var AGENT = fmt.Sprintf("sproket/%s", VERSION)
@@ -68,6 +69,10 @@ func (args *config) Init() error {
 		args.search.Fields["latest"] = "true"
 
 		args.softDataNode = (len(args.search.DataNodePriority) != 0)
+
+		// Configure HTTP settings
+		args.search.Agent = AGENT
+		args.search.HTTPClient = &http.Client{}
 	}
 	if _, err := os.Stat(args.outDir); os.IsNotExist(err) {
 		return fmt.Errorf("directory %s does not exist", args.outDir)
@@ -109,35 +114,47 @@ func verify(dest string, remoteSum string, remoteSumType string) error {
 func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *config) {
 	defer waiter.Done()
 	for doc := range inDocs {
+		// Report download when verbose
 		if args.verbose {
 			fmt.Printf("%d: download %s\n", id, doc.HTTPURL)
 		}
+		// Report URLs only, if applicable
 		if args.urlsOnly {
 			fmt.Println(doc.HTTPURL)
 		} else if args.noDownload {
+			// Do nothing in no download, except report if verbose
 			if args.verbose {
 				fmt.Printf("%d: no download\n", id)
 			}
-		} else {
+		} else { // Do the download
+			// Build filenames
+			destName := filepath.Join(args.outDir, fmt.Sprintf("%s.part", doc.InstanceID))
+			finalDestName := filepath.Join(args.outDir, doc.InstanceID)
 
-			dest := filepath.Join(args.outDir, fmt.Sprintf("%s.part", doc.InstanceID))
-			finalDest := filepath.Join(args.outDir, doc.InstanceID)
-
-			// Check if present and correct
-			if _, err := os.Stat(finalDest); err == nil {
-				err := verify(finalDest, doc.GetSum(), doc.GetSumType())
+			// Check if file is already present and correct
+			if _, err := os.Stat(finalDestName); err == nil {
+				err := verify(finalDestName, doc.GetSum(), doc.GetSumType())
 
 				// Go to next download if everything checks out
 				if err == nil {
 					if args.verbose {
-						fmt.Printf("%d: %s already present and verified, no download\n", id, finalDest)
+						fmt.Printf("%d: %s already present and verified, no download\n", id, finalDestName)
 					}
 					continue
 				}
 			}
 
+			// Create destination
+			dest, err := os.Create(destName)
+			if err != nil {
+				fmt.Printf("%d: unable to create file: %s\n", id, err)
+				continue
+			}
+			defer dest.Close()
+
 			// Perform download
-			err := sproket.Get(doc.HTTPURL, dest, AGENT)
+			err = args.search.Get(doc.HTTPURL, dest)
+			dest.Close()
 			if err != nil {
 				fmt.Printf("%d: an error occurred during download of %s:\n\t%s\n", id, doc.HTTPURL, err)
 				continue
@@ -145,37 +162,37 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 
 			// Verify checksum, if available and desired
 			if !(args.noVerify) {
-				err := verify(dest, doc.GetSum(), doc.GetSumType())
+				err := verify(destName, doc.GetSum(), doc.GetSumType())
 				if err != nil {
 					fmt.Println(err)
 					continue
 				} else if args.verbose {
-					fmt.Printf("%d: verified %s\n", id, dest)
+					fmt.Printf("%d: verified %s\n", id, destName)
 				}
 			}
 
 			// Rename the file to indicate it is verified
-			err = os.Rename(dest, finalDest)
+			err = os.Rename(destName, finalDestName)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			} else if args.verbose {
-				fmt.Printf("%d: removed postfix %s\n", id, finalDest)
+				fmt.Printf("%d: removed postfix %s\n", id, finalDestName)
 			}
 		}
 	}
 }
 
-func getBySearch(search sproket.Search, args *config) {
+func getBySearch(args *config) {
 
 	// Check if the soft data node list will even matter
 	dataNodeMatches := make(map[string]bool)
 	if args.softDataNode {
 		// Check for any matching replica data nodes in data node priority list
-		search.Fields["replica"] = "true"
-		dataNodes := sproket.Facet(&search, "data_node")
+		args.search.Fields["replica"] = "true"
+		dataNodes := args.search.Facet("data_node")
 		for dataNode := range dataNodes {
-			for _, preferedDataNode := range search.DataNodePriority {
+			for _, preferedDataNode := range args.search.DataNodePriority {
 				if dataNode == preferedDataNode {
 					dataNodeMatches[dataNode] = true
 				}
@@ -191,11 +208,11 @@ func getBySearch(search sproket.Search, args *config) {
 	}
 
 	// Count original files, only files with "replica: false" entries present in the index will be downloaded
-	search.Fields["replica"] = "false"
+	args.search.Fields["replica"] = "false"
 	if args.verbose {
-		fmt.Println(search)
+		fmt.Println(args.search)
 	}
-	_, n := sproket.SearchURLs(&search, 0, 0)
+	_, n := args.search.SearchURLs(0, 0)
 	if !(args.urlsOnly) {
 		fmt.Printf("found %d files for download\n", n)
 	}
@@ -220,7 +237,7 @@ func getBySearch(search sproket.Search, args *config) {
 	limit := 250
 	cur := 0
 	for {
-		docs, remaining := sproket.SearchURLs(&search, cur, limit)
+		docs, remaining := args.search.SearchURLs(cur, limit)
 		for _, doc := range docs {
 			if !(args.softDataNode) {
 				docChan <- doc
@@ -238,18 +255,18 @@ func getBySearch(search sproket.Search, args *config) {
 	// Find replica options if desired
 	if args.softDataNode {
 		cur = 0
-		search.Fields["replica"] = "true"
+		args.search.Fields["replica"] = "true"
 
 		var validDataOptions []string
 		for dataNodeMatch := range dataNodeMatches {
 			validDataOptions = append(validDataOptions, dataNodeMatch)
 		}
-		search.Fields["data_node"] = strings.Join(validDataOptions, " OR ")
+		args.search.Fields["data_node"] = strings.Join(validDataOptions, " OR ")
 		if args.verbose {
-			fmt.Println(search)
+			fmt.Println(args.search)
 		}
 		for {
-			docs, remaining := sproket.SearchURLs(&search, cur, limit)
+			docs, remaining := args.search.SearchURLs(cur, limit)
 			for _, doc := range docs {
 				_, in := allDocs[doc.InstanceID]
 				if in {
@@ -266,7 +283,7 @@ func getBySearch(search sproket.Search, args *config) {
 		prefJobsSubmitted := 0
 		for _, dataNodeMap := range allDocs {
 			foundPreffered := false
-			for _, prefferedDataNode := range search.DataNodePriority {
+			for _, prefferedDataNode := range args.search.DataNodePriority {
 				for dataNode, doc := range dataNodeMap {
 					if prefferedDataNode == dataNode {
 						docChan <- doc
@@ -300,26 +317,25 @@ func getBySearch(search sproket.Search, args *config) {
 func outputFields(args *config) {
 
 	// Grab sample fields from a single search result
-	keys := sproket.SearchFields(&args.search)
+	keys := args.search.GetFields()
 	if keys == nil {
 		fmt.Println("no records match the search criteria, unable to determine fields")
 		return
 	}
 	sort.Strings(keys)
-	fmt.Println("criteria: ")
-	fmt.Println(args.search)
-	fmt.Println("field keys: ")
+	if args.verbose {
+		fmt.Println(args.search)
+	}
 	for _, key := range keys {
 		if !(strings.HasPrefix(key, "_")) {
-			fmt.Printf("  %s\n", key)
+			fmt.Println(key)
 		}
 	}
-	fmt.Println()
 }
 
 func outputDataNodes(args *config) {
 
-	_, n := sproket.SearchURLs(&args.search, 0, 0)
+	_, n := args.search.SearchURLs(0, 0)
 	if n == 0 {
 		fmt.Println("no records match search criteria")
 		return
@@ -329,7 +345,7 @@ func outputDataNodes(args *config) {
 
 	// Ensure only unique files are output
 	args.search.Fields["replica"] = "false"
-	dataNodes := sproket.Facet(&args.search, "data_node")
+	dataNodes := args.search.Facet("data_node")
 	fmt.Println("excluding replication:")
 	if args.verbose {
 		fmt.Println(args.search)
@@ -352,7 +368,7 @@ func outputDataNodes(args *config) {
 	args.search.Fields["replica"] = "*"
 
 	// Get data node counts and total count
-	dataNodes = sproket.Facet(&args.search, "data_node")
+	dataNodes = args.search.Facet("data_node")
 	dataNodeOutput = nil
 	for dataNode := range dataNodes {
 		dataNodeOutput = append(dataNodeOutput, dataNode)
@@ -385,14 +401,14 @@ func outputValuesFor(args *config) {
 	}
 	// Ensure only unique files are output
 	args.search.Fields["replica"] = "false"
-	_, n := sproket.SearchURLs(&args.search, 0, 0)
+	_, n := args.search.SearchURLs(0, 0)
 	if n == 0 {
 		fmt.Println("no records match search criteria")
 		return
 	}
 
 	var values []string
-	valueCounts := sproket.Facet(&args.search, args.valuesFor)
+	valueCounts := args.search.Facet(args.valuesFor)
 	if len(valueCounts) == 0 {
 		fmt.Printf("no values could be found for the provided field: '%s'\n", args.valuesFor)
 		return
@@ -440,7 +456,7 @@ func main() {
 	} else if args.fieldKeys {
 		outputFields(&args)
 	} else if len(args.search.Fields) > 0 {
-		getBySearch(args.search, &args)
+		getBySearch(&args)
 	} else {
 		flag.Usage()
 	}
