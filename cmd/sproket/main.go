@@ -19,7 +19,7 @@ import (
 )
 
 // VERSION is the current version of sproket
-var VERSION = "v0.2.10"
+var VERSION = "v0.2.11"
 
 // AGENT sets the User-Agent field in the HTTP requests
 var AGENT = fmt.Sprintf("sproket/%s", VERSION)
@@ -80,27 +80,30 @@ func (args *config) Init() error {
 	return nil
 }
 
-func verify(dest string, remoteSum string, remoteSumType string) error {
+func getHasher(dest string, remoteSum string, remoteSumType string) (hash.Hash, error) {
+	if remoteSumType == "" || remoteSum == "" {
+		return nil, fmt.Errorf("could not retrieve checksum for %s", dest)
+	}
+	switch remoteSumType {
+	case "MD5":
+		return md5.New(), nil
+	case "SHA256":
+		return sha256.New(), nil
+	default:
+		return nil, fmt.Errorf("unrecognized checksum_type: %s", remoteSumType)
+	}
+}
 
-	if remoteSum == "" || remoteSumType == "" {
-		return fmt.Errorf("could not retrieve checksum for %s", dest)
+func check(dest string, remoteSum string, remoteSumType string) error {
+	hash, err := getHasher(dest, remoteSum, remoteSumType)
+	if err != nil {
+		return err
 	}
 	f, err := os.Open(dest)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-
-	var hash hash.Hash
-	switch remoteSumType {
-	case "MD5":
-		hash = md5.New()
-	case "SHA256":
-		hash = sha256.New()
-	default:
-		return fmt.Errorf("unrecognized checksum_type: %s", remoteSumType)
-	}
-
 	if _, err := io.Copy(hash, f); err != nil {
 		return err
 	}
@@ -133,8 +136,7 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 
 			// Check if file is already present and correct
 			if _, err := os.Stat(finalDestName); err == nil {
-				err := verify(finalDestName, doc.GetSum(), doc.GetSumType())
-
+				err = check(finalDestName, doc.GetSum(), doc.GetSumType())
 				// Go to next download if everything checks out
 				if err == nil {
 					if args.verbose {
@@ -144,27 +146,40 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 				}
 			}
 
-			// Create destination
-			dest, err := os.Create(destName)
+			// Create the destination file
+			fileWriter, err := os.Create(destName)
 			if err != nil {
-				fmt.Printf("%d: unable to create file: %s\n", id, err)
+				fmt.Printf("%d: unable to create %s: %s\n", id, destName, err)
 				continue
 			}
-			defer dest.Close()
+			defer fileWriter.Close()
+
+			// Create destination writer and set the default writer
+			var dest io.Writer
+			dest = fileWriter
+
+			// Create hash for potential later use
+			h, hashErr := getHasher(finalDestName, doc.GetSum(), doc.GetSumType())
+			if hashErr != nil && !(args.noVerify) {
+				fmt.Printf("%d: hash warning: %s\n", id, hashErr)
+			} else if !(args.noVerify) {
+				// Write to both the file and the hash in memory, not parallel though
+				dest = io.MultiWriter(h, fileWriter)
+			}
 
 			// Perform download
 			err = args.search.Get(doc.HTTPURL, dest)
-			dest.Close()
+			fileWriter.Close()
 			if err != nil {
 				fmt.Printf("%d: an error occurred during download of %s:\n\t%s\n", id, doc.HTTPURL, err)
 				continue
 			}
 
 			// Verify checksum, if available and desired
-			if !(args.noVerify) {
-				err := verify(destName, doc.GetSum(), doc.GetSumType())
-				if err != nil {
-					fmt.Println(err)
+			if hashErr == nil && !(args.noVerify) {
+				verified := (fmt.Sprintf("%x", h.Sum(nil)) == doc.GetSum())
+				if !(verified) {
+					fmt.Printf("checksum verification failure for %s", finalDestName)
 					continue
 				} else if args.verbose {
 					fmt.Printf("%d: verified %s\n", id, destName)
@@ -172,12 +187,14 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 			}
 
 			// Rename the file to indicate it is verified
-			err = os.Rename(destName, finalDestName)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			} else if args.verbose {
-				fmt.Printf("%d: removed postfix %s\n", id, finalDestName)
+			if hashErr == nil || args.noVerify {
+				err = os.Rename(destName, finalDestName)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				} else if args.verbose {
+					fmt.Printf("%d: removed postfix %s\n", id, finalDestName)
+				}
 			}
 		}
 	}
