@@ -6,6 +6,8 @@ The entire tool lives in a single, executable, binary file.
 Get the latest release from [the release page](https://github.com/ESGF/sproket/releases).
 Be sure to get the correct operating system version (`darwin` is Mac).
 
+After downloading the file may need to be set to executable, on Mac and Linux this is `chmod +x [sproket file]`.
+
 
 In the default mode, sproket will attempt to perform downloads of the entire matching result set.
 
