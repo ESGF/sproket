@@ -202,6 +202,24 @@ func getData(id int, inDocs <-chan sproket.Doc, waiter *sync.WaitGroup, args *co
 
 func getBySearch(args *config) {
 
+	// Count original files, only files with "replica: false" entries present in the index will be downloaded
+	args.search.Fields["replica"] = "false"
+	if args.verbose {
+		fmt.Println(args.search)
+	}
+	_, n := args.search.SearchURLs(0, 0)
+	if !(args.urlsOnly) {
+		fmt.Printf("found %d files for download\n", n)
+	}
+	if args.count || n == 0 {
+		return
+	}
+	warnCount := 100
+	if !(args.confirm) && n > warnCount {
+		fmt.Printf("too many files (%d > %d): confirm larger download by specifying the -y option or refine search criteria\n", n, warnCount)
+		return
+	}
+
 	// Check if the soft data node list will even matter
 	dataNodeMatches := make(map[string]bool)
 	if args.softDataNode {
@@ -222,23 +240,8 @@ func getBySearch(args *config) {
 		if len(dataNodeMatches) == 0 {
 			args.softDataNode = false
 		}
-	}
-
-	// Count original files, only files with "replica: false" entries present in the index will be downloaded
-	args.search.Fields["replica"] = "false"
-	if args.verbose {
-		fmt.Println(args.search)
-	}
-	_, n := args.search.SearchURLs(0, 0)
-	if !(args.urlsOnly) {
-		fmt.Printf("found %d files for download\n", n)
-	}
-	if args.count || n == 0 {
-		return
-	}
-	if !(args.confirm) && n > 100 {
-		fmt.Printf("too many files (%d > 100): confirm larger download by specifying the -y option or refine search criteria\n", n)
-		return
+		// Reset replica to false
+		args.search.Fields["replica"] = "false"
 	}
 
 	// Setup download workers in case data node does not matter and for later
@@ -252,8 +255,7 @@ func getBySearch(args *config) {
 	// Get documents that are all originals and assurred to be the true latest files
 	allDocs := make(map[string]map[string]sproket.Doc)
 	limit := 250
-	cur := 0
-	for {
+	for cur := 0; ; cur += limit {
 		docs, remaining := args.search.SearchURLs(cur, limit)
 		for _, doc := range docs {
 			if !(args.softDataNode) {
@@ -266,23 +268,25 @@ func getBySearch(args *config) {
 		if remaining == 0 {
 			break
 		}
-		cur += limit
 	}
 
 	// Find replica options if desired
 	if args.softDataNode {
-		cur = 0
-		args.search.Fields["replica"] = "true"
-
+		// Build list of potential alternative data nodes
 		var validDataOptions []string
 		for dataNodeMatch := range dataNodeMatches {
 			validDataOptions = append(validDataOptions, dataNodeMatch)
 		}
+		// Restrict to this candidate data node only
 		args.search.Fields["data_node"] = strings.Join(validDataOptions, " OR ")
+		// These data nodes are replicas
+		args.search.Fields["replica"] = "true"
 		if args.verbose {
 			fmt.Println(args.search)
 		}
-		for {
+
+		// Find candidate docs and verify if the version is the true latest version using the instance_id key
+		for cur := 0; ; cur += limit {
 			docs, remaining := args.search.SearchURLs(cur, limit)
 			for _, doc := range docs {
 				_, in := allDocs[doc.InstanceID]
@@ -293,7 +297,6 @@ func getBySearch(args *config) {
 			if remaining == 0 {
 				break
 			}
-			cur += limit
 		}
 
 		jobsSubmitted := 0
