@@ -19,7 +19,7 @@ import (
 )
 
 // VERSION is the current version of sproket
-var VERSION = "v0.2.11"
+var VERSION = "v0.2.12"
 
 // AGENT sets the User-Agent field in the HTTP requests
 var AGENT = fmt.Sprintf("sproket/%s", VERSION)
