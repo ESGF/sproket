@@ -19,7 +19,7 @@ import (
 )
 
 // VERSION is the current version of sproket
-var VERSION = "v0.2.12"
+var VERSION = "v0.2.13"
 
 // AGENT sets the User-Agent field in the HTTP requests
 var AGENT = fmt.Sprintf("sproket/%s", VERSION)
@@ -39,6 +39,7 @@ type config struct {
 	fieldKeys        bool
 	displayDataNodes bool
 	softDataNode     bool
+	unsafe           bool
 	search           sproket.Search
 }
 
@@ -65,8 +66,10 @@ func (args *config) Init() error {
 		// Hard set special fields
 		args.search.Fields["replica"] = "*"
 		args.search.Fields["data_node"] = "*"
-		args.search.Fields["retracted"] = "false"
-		args.search.Fields["latest"] = "true"
+		if !(args.unsafe) {
+			args.search.Fields["retracted"] = "false"
+			args.search.Fields["latest"] = "true"
+		}
 
 		args.softDataNode = (len(args.search.DataNodePriority) != 0)
 
@@ -421,6 +424,9 @@ func outputValuesFor(args *config) {
 	}
 	// Ensure only unique files are output
 	args.search.Fields["replica"] = "false"
+	if args.verbose {
+		fmt.Println(args.search)
+	}
 	_, n := args.search.SearchURLs(0, 0)
 	if n == 0 {
 		fmt.Println("no records match search criteria")
@@ -459,6 +465,7 @@ func main() {
 	flag.BoolVar(&args.count, "count", false, "Flag to only count number of files that would be attempted to be downloaded")
 	flag.BoolVar(&args.version, "version", false, "Flag to output the version and exit")
 	flag.BoolVar(&args.urlsOnly, "urls.only", false, "Flag to only output to stdout the HTTP URLs that would be used")
+	flag.BoolVar(&args.unsafe, "unsafe", false, "Removes the hard set requirement of the retracted field being false and latest being true. The user is then free to specify these fields themselves in the search config, but are not required to.")
 	flag.Parse()
 	if args.version {
 		fmt.Println(VERSION)
