@@ -82,8 +82,8 @@ For example:
 Note that each valueN above may include wildcards or be regular expressions. See Regex vs Wildcard below.
 
 ###  Special Field Considerations
-* `retracted`: This is hard coded to `”false”`. User specified values will be ignored.
-* `latest`:  This is hard coded to `”true”`. User specified values will be ignored. Note this may conflict with any `version` specifications, including any ID's that may contain versions.
+* `retracted`: This is hard coded to `”false”`. User specified values will be ignored unless `-unsafe` is specified.
+* `latest`: This is hard coded to `”true”`. User specified values will be ignored unless `-unsafe` is specified. Note this may conflict with any `version` specifications, including any ID's that may contain versions.
 * `replica`: This is changed at various points in sproket to ensure users receive one, and only one, copy of each file in a result set. User specified values will be ignored.
 * `data_node`: This is hard coded to `”*”`. User specified values will be ignored. See the data_node_priority parameter above for data node control.
 
