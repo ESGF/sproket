@@ -19,7 +19,7 @@ import (
 )
 
 // VERSION is the current version of sproket
-var VERSION = "v0.2.13"
+var VERSION = "v0.2.14"
 
 // AGENT sets the User-Agent field in the HTTP requests
 var AGENT = fmt.Sprintf("sproket/%s", VERSION)
@@ -45,38 +45,37 @@ type config struct {
 
 func (args *config) Init() error {
 
-	if args.conf != "" {
-		// Load config file
-		fileBytes, err := ioutil.ReadFile(args.conf)
-		if err != nil {
-			return fmt.Errorf("%s not found", args.conf)
-		}
-
-		// Validate JSON
-		if !(json.Valid(fileBytes)) {
-			return fmt.Errorf("%s does not contain valid JSON", args.conf)
-		}
-
-		// Load JSON config
-		json.Unmarshal(fileBytes, &args.search)
-		if args.search.API == "" {
-			return fmt.Errorf("search_api is required parameter in config file")
-		}
-
-		// Hard set special fields
-		args.search.Fields["replica"] = "*"
-		args.search.Fields["data_node"] = "*"
-		if !(args.unsafe) {
-			args.search.Fields["retracted"] = "false"
-			args.search.Fields["latest"] = "true"
-		}
-
-		args.softDataNode = (len(args.search.DataNodePriority) != 0)
-
-		// Configure HTTP settings
-		args.search.Agent = AGENT
-		args.search.HTTPClient = &http.Client{}
+	// Load config file
+	fileBytes, err := ioutil.ReadFile(args.conf)
+	if err != nil {
+		return fmt.Errorf("%s not found", args.conf)
 	}
+
+	// Validate JSON
+	if !(json.Valid(fileBytes)) {
+		return fmt.Errorf("%s does not contain valid JSON", args.conf)
+	}
+
+	// Load JSON config
+	json.Unmarshal(fileBytes, &args.search)
+	if args.search.API == "" {
+		return fmt.Errorf("search_api is required parameter in config file")
+	}
+
+	// Hard set special fields
+	args.search.Fields["replica"] = "*"
+	args.search.Fields["data_node"] = "*"
+	if !(args.unsafe) {
+		args.search.Fields["retracted"] = "false"
+		args.search.Fields["latest"] = "true"
+	}
+
+	args.softDataNode = (len(args.search.DataNodePriority) != 0)
+
+	// Configure HTTP settings
+	args.search.Agent = AGENT
+	args.search.HTTPClient = &http.Client{}
+
 	if _, err := os.Stat(args.outDir); os.IsNotExist(err) {
 		return fmt.Errorf("directory %s does not exist", args.outDir)
 	}
@@ -469,6 +468,11 @@ func main() {
 	flag.Parse()
 	if args.version {
 		fmt.Println(VERSION)
+		return
+	}
+	// Everything beyond this point requires an initialized Search object
+	if args.conf == "" {
+		fmt.Println("-config is required, use -h for help")
 		return
 	}
 	err := args.Init()
