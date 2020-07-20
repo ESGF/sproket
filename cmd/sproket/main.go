@@ -338,6 +338,9 @@ func getBySearch(args *config) {
 
 func outputFields(args *config) {
 
+	if args.verbose {
+		fmt.Println(args.search)
+	}
 	// Grab sample fields from a single search result
 	keys := args.search.GetFields()
 	if keys == nil {
@@ -345,9 +348,6 @@ func outputFields(args *config) {
 		return
 	}
 	sort.Strings(keys)
-	if args.verbose {
-		fmt.Println(args.search)
-	}
 	for _, key := range keys {
 		if !(strings.HasPrefix(key, "_")) {
 			fmt.Println(key)
@@ -357,6 +357,9 @@ func outputFields(args *config) {
 
 func outputDataNodes(args *config) {
 
+	if args.verbose {
+		fmt.Println(args.search)
+	}
 	_, n := args.search.SearchURLs(0, 0)
 	if n == 0 {
 		fmt.Println("no records match search criteria")
